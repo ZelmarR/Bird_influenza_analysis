@@ -15,11 +15,11 @@ FRAME_SKIP = 1
 RESIZE_FACTOR = 0.7
 BINARY_THRESHOLD = 127
 motion_threshold = 5       # lowered from 10: fast birds leave little diff inside their new bbox
-MIN_BIRD_AREA = 15
-MAX_BIRD_AREA = 800
-MIN_ASPECT_RATIO = 0.4
-MAX_ASPECT_RATIO = 3.0
-MIN_BIRD_SOLIDITY = 0.6
+MIN_BIRD_AREA = 10         # lowered from 15: motion-blurred fast birds can appear smaller at edges
+MAX_BIRD_AREA = 2000       # raised from 800: motion blur stretches fast birds into elongated smears
+MIN_ASPECT_RATIO = 0.2     # widened from 0.4: blur can make a bird very wide relative to height
+MAX_ASPECT_RATIO = 6.0     # widened from 3.0: same reason — motion-blurred birds are streaks
+MIN_BIRD_SOLIDITY = 0.4    # lowered from 0.6: blurred contours are irregular, not compact
 MIN_MOTION_PIXELS = 2      # lowered from 5: fast birds may only partially overlap previous position
 ROI_UPDATE_INTERVAL = 12
 ROI_SMOOTHING_FACTOR = 0.5
@@ -130,15 +130,26 @@ def detect_moving_birds(current_detections, current_gray_roi, prev_gray_roi):
         return [], current_gray_roi
 
     frame_diff = cv2.absdiff(prev_gray_roi, current_gray_roi)
+    fh, fw = frame_diff.shape[:2]
     moving_birds = []
 
     for detection in current_detections:
         x, y, w, h = detection['bbox']
-        y2 = min(y + h, frame_diff.shape[0])
-        x2 = min(x + w, frame_diff.shape[1])
-        if y >= y2 or x >= x2:
+
+        # Expand the search region by the bird's own dimensions on each side.
+        # A fast bird that moved one full body-length between frames will leave a
+        # strong diff signal just outside its current bbox (where it came from).
+        # Checking the expanded region catches both the arrival and departure ghost.
+        pad_x = max(w, 20)
+        pad_y = max(h, 20)
+        ex1 = max(0, x - pad_x)
+        ey1 = max(0, y - pad_y)
+        ex2 = min(fw, x + w + pad_x)
+        ey2 = min(fh, y + h + pad_y)
+
+        if ex1 >= ex2 or ey1 >= ey2:
             continue
-        roi_diff = frame_diff[y:y2, x:x2]
+        roi_diff = frame_diff[ey1:ey2, ex1:ex2]
         if roi_diff.size == 0:
             continue
         motion_pixels = np.count_nonzero(roi_diff > motion_threshold)
