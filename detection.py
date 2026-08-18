@@ -1,28 +1,30 @@
 import cv2
 import numpy as np
-from collections import defaultdict
 import math
-from datetime import datetime
 import os
 import time
-from scipy.optimize import linear_sum_assignment
 
-FRAME_COVERAGE_PERCENTAGE = 0.6
-FRAME_SKIP = 1
-RESIZE_FACTOR = 0.7
-BINARY_THRESHOLD = 127
-motion_threshold = 5       # lowered from 10: fast birds leave little diff inside their new bbox
-MIN_BIRD_AREA = 10         # lowered from 15: motion-blurred fast birds can appear smaller at edges
-MAX_BIRD_AREA = 2000       # raised from 800: motion blur stretches fast birds into elongated smears
-MIN_ASPECT_RATIO = 0.2     # widened from 0.4: blur can make a bird very wide relative to height
-MAX_ASPECT_RATIO = 6.0     # widened from 3.0: same reason — motion-blurred birds are streaks
-MIN_BIRD_SOLIDITY = 0.4    # lowered from 0.6: blurred contours are irregular, not compact
-MIN_MOTION_PIXELS = 2      # lowered from 5: fast birds may only partially overlap previous position
-ROI_UPDATE_INTERVAL = 12
-ROI_SMOOTHING_FACTOR = 0.5
+FRAME_SKIP                    = 1
+RESIZE_FACTOR                 = 0.8
+MIN_BIRD_AREA                 = 15
+MAX_BIRD_AREA                 = 800
+MIN_ASPECT_RATIO              = 0.4
+MAX_ASPECT_RATIO              = 3.0
+MIN_BIRD_SOLIDITY             = 0.6
+MOTION_THRESHOLD              = 10
+MIN_MOTION_PIXELS             = 5
+MAX_STATIONARY_FRAMES         = 10
+MIN_MOVEMENT_DISTANCE         = 15
+MIN_FLIGHT_DURATION           = 3
+MAX_MATCHING_DISTANCE         = 80
+MIN_BIRD_SPEED                = 3
+MAX_BIRD_SPEED                = 100
+DIRECTIONAL_CHANGE_THRESHOLD  = 0.7
+ROI_UPDATE_INTERVAL           = 12
+ROI_SMOOTHING_FACTOR          = 0.5
 INITIAL_ROI_BOTTOM_PERCENTAGE = 60
-CLOUD_TEXTURE_THRESHOLD = 20
-TEXTURE_NEIGHBORHOOD = 7
+CLOUD_TEXTURE_THRESHOLD       = 20
+TEXTURE_NEIGHBORHOOD          = 7
 
 
 def calculate_object_solidity(contour):
@@ -118,189 +120,189 @@ def is_likely_cloud(frame, bbox):
     return avg_texture < CLOUD_TEXTURE_THRESHOLD and color_std < 25 and edge_density < 0.05
 
 
-def detect_moving_birds(current_detections, current_gray_roi, prev_gray_roi):
-    if prev_gray_roi is None:
-        return [], current_gray_roi
-
-    # ROI height can change when dynamic ROI updates; skip diff for that frame
-    if prev_gray_roi.shape != current_gray_roi.shape:
-        return [], current_gray_roi
-
-    frame_diff = cv2.absdiff(prev_gray_roi, current_gray_roi)
-    fh, fw = frame_diff.shape[:2]
-    moving_birds = []
-
-    for detection in current_detections:
-        x, y, w, h = detection['bbox']
-
-        # Expand the search region by the bird's own dimensions on each side.
-        # A fast bird that moved one full body-length between frames will leave a
-        # strong diff signal just outside its current bbox (where it came from).
-        # Checking the expanded region catches both the arrival and departure ghost.
-        pad_x = max(w, 20)
-        pad_y = max(h, 20)
-        ex1 = max(0, x - pad_x)
-        ey1 = max(0, y - pad_y)
-        ex2 = min(fw, x + w + pad_x)
-        ey2 = min(fh, y + h + pad_y)
-
-        if ex1 >= ex2 or ey1 >= ey2:
-            continue
-        roi_diff = frame_diff[ey1:ey2, ex1:ex2]
-        if roi_diff.size == 0:
-            continue
-        motion_pixels = np.count_nonzero(roi_diff > motion_threshold)
-        if motion_pixels >= MIN_MOTION_PIXELS and np.mean(roi_diff) > motion_threshold:
-            moving_birds.append(detection)
-
-    return moving_birds, current_gray_roi
-
-
-class EnhancedBirdTracker:
-    def __init__(self, max_stationary_frames=20, min_movement_distance=15, min_flight_duration=5):
-        self.tracks = {}
-        self.track_id = 0
-        self.max_stationary_frames = max_stationary_frames
-        self.min_movement_distance = min_movement_distance
-        self.min_flight_duration = min_flight_duration
-        self.confirmed_flying_birds = set()
-        self.bird_flight_status = {}
-
-    MAX_MATCH_DIST = 90
-
-    def update_tracks(self, detections):
-        matched_tracks = {}
-        current_frame_birds = []
-
-        track_ids = list(self.tracks.keys())
-
-        if track_ids and detections:
-            track_positions = np.array([self.tracks[tid]['positions'][-1] for tid in track_ids],
-                                       dtype=np.float32)
-            det_centers = np.array([d['center'] for d in detections], dtype=np.float32)
-
-            diff = track_positions[:, np.newaxis, :] - det_centers[np.newaxis, :, :]
-            cost = np.sqrt(np.sum(diff ** 2, axis=2))
-
-            row_idx, col_idx = linear_sum_assignment(cost)
-
-            for r, c in zip(row_idx, col_idx):
-                if cost[r, c] <= self.MAX_MATCH_DIST:
-                    tid = track_ids[r]
-                    det = detections[c]
-                    x, y = det['center']
-                    self.tracks[tid]['positions'].append((x, y))
-                    self.tracks[tid]['stationary_count'] = 0
-                    self.tracks[tid]['last_seen'] = len(self.tracks[tid]['positions'])
-                    matched_tracks[tid] = det
-
-                    if self.is_bird_flying(tid):
-                        self.confirmed_flying_birds.add(tid)
-                        self.bird_flight_status[tid] = 'flying'
-                        current_frame_birds.append(det)
-
-        matched_det_indices = {id(matched_tracks[tid]) for tid in matched_tracks}
-        for det in detections:
-            if id(det) not in matched_det_indices:
-                self.tracks[self.track_id] = {
-                    'positions': [det['center']],
-                    'stationary_count': 0,
-                    'last_seen': 1,
-                    'created_frame': self.track_id,
-                }
-                self.bird_flight_status[self.track_id] = 'new'
-                self.track_id += 1
-
-        tracks_to_remove = []
-        for tid in list(self.tracks.keys()):
-            if tid not in matched_tracks:
-                self.tracks[tid]['stationary_count'] += 1
-                if self.tracks[tid]['stationary_count'] >= self.max_stationary_frames:
-                    tracks_to_remove.append(tid)
-        for tid in tracks_to_remove:
-            del self.tracks[tid]
-            self.bird_flight_status.pop(tid, None)
-
-        return current_frame_birds
-
-    def is_bird_flying(self, track_id):
-        positions = self.tracks[track_id]['positions']
-        if len(positions) < self.min_flight_duration:
-            return False
-
-        pos_array = np.array(positions[-10:])
-        if len(pos_array) < 2:
-            return False
-
-        diffs = np.diff(pos_array, axis=0)
-        distances = np.sqrt(np.sum(diffs ** 2, axis=1))
-        total_distance = np.sum(distances)
-        avg_movement = total_distance / len(distances) if len(distances) > 0 else 0
-
-        movement_consistency = 0
-        if len(diffs) >= 2:
-            valid_idx = distances > 0
-            if np.sum(valid_idx) >= 2:
-                norm_diffs = diffs[valid_idx] / distances[valid_idx, np.newaxis]
-                dot_products = np.abs(np.dot(norm_diffs, norm_diffs.T))
-                mask = ~np.eye(len(norm_diffs), dtype=bool)
-                movement_consistency = np.mean(dot_products[mask]) if np.sum(mask) > 0 else 0
-
-        return (
-            total_distance > self.min_movement_distance
-            and avg_movement > 1.0      # lowered from 2.0: catches slower flock birds
-            and movement_consistency > 0.2  # lowered from 0.3: flock birds can jink/turn
-        )
-
-    def get_unique_flying_birds_count(self):
-        return len(self.confirmed_flying_birds)
-
-    def get_currently_active_birds(self):
-        return len(self.confirmed_flying_birds & self.tracks.keys())
-
-
 def detect_birds_in_frame(frame, frame_height=None, detection_boundary=None, threshold=None):
     if frame_height is None:
         frame_height = frame.shape[0]
     if detection_boundary is None:
-        detection_boundary = int(frame_height * FRAME_COVERAGE_PERCENTAGE)
+        detection_boundary = int(frame_height * INITIAL_ROI_BOTTOM_PERCENTAGE / 100)
 
     roi = frame[:detection_boundary, :]
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
     if threshold is not None:
-        _, thresh = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY_INV)
+        _, thresh = cv2.threshold(blurred, threshold, 255, cv2.THRESH_BINARY_INV)
     else:
         thresh = cv2.adaptiveThreshold(
-            gray, 255,
+            blurred, 255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY_INV,
-            blockSize=11, C=2,
+            11, 2,
         )
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
 
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     detections = []
     for contour in contours:
         area = cv2.contourArea(contour)
-        if MIN_BIRD_AREA < area < MAX_BIRD_AREA:
-            if calculate_object_solidity(contour) < MIN_BIRD_SOLIDITY:
-                continue
-            x, y, w, h = cv2.boundingRect(contour)
-            aspect_ratio = w / h if h > 0 else 0
-            if MIN_ASPECT_RATIO < aspect_ratio < MAX_ASPECT_RATIO:
-                if is_likely_cloud(frame, (x, y, w, h)):
-                    continue
-                detections.append({
-                    'bbox': (x, y, w, h),
-                    'center': (x + w // 2, y + h // 2),
-                    'area': area,
-                    'confidence': min(1.0, area / 100.0),
-                })
+        if not (MIN_BIRD_AREA < area < MAX_BIRD_AREA):
+            continue
+        x, y, w, h = cv2.boundingRect(contour)
+        aspect_ratio = w / h if h > 0 else 0
+        if not (MIN_ASPECT_RATIO < aspect_ratio < MAX_ASPECT_RATIO):
+            continue
+        if calculate_object_solidity(contour) < MIN_BIRD_SOLIDITY:
+            continue
+        if is_likely_cloud(roi, (x, y, w, h)):
+            continue
+        detections.append({
+            'bbox': (x, y, w, h),
+            'center': (x + w // 2, y + h // 2),
+            'area': area,
+            'aspect_ratio': aspect_ratio,
+            'confidence': min(1.0, area / 100.0),
+        })
 
     return detections, gray
+
+
+def detect_moving_birds(current_detections, current_gray_roi, prev_gray_roi, roi_bgr):
+    if prev_gray_roi is None:
+        return [], current_gray_roi
+
+    # ROI height can change when dynamic ROI updates; skip flow for that frame
+    if prev_gray_roi.shape != current_gray_roi.shape:
+        return [], current_gray_roi
+
+    # Optical flow on ROI only (not full frame) for speed.
+    # levels=2 and winsize=11 instead of notebook's 3/15 — ~4x faster, adequate for small birds.
+    flow = cv2.calcOpticalFlowFarneback(
+        prev_gray_roi, current_gray_roi, None,
+        0.5, 2, 11, 3, 5, 1.2, 0,
+    )
+    frame_diff = cv2.absdiff(prev_gray_roi, current_gray_roi)
+    fh, fw = current_gray_roi.shape[:2]
+    moving_birds = []
+
+    for detection in current_detections:
+        x, y, w, h = detection['bbox']
+        if x < 0 or y < 0 or x + w > fw or y + h > fh:
+            continue
+
+        roi_diff = frame_diff[y:y+h, x:x+w]
+        if roi_diff.size == 0:
+            continue
+        motion_pixels = np.count_nonzero(roi_diff > MOTION_THRESHOLD)
+
+        roi_flow = flow[y:y+h, x:x+w]
+        if roi_flow.size == 0:
+            continue
+        mag, _ = cv2.cartToPolar(roi_flow[..., 0], roi_flow[..., 1])
+        avg_magnitude = np.mean(mag)
+
+        if np.count_nonzero(mag > 0.5) > 10:
+            flow_x = np.mean(roi_flow[..., 0])
+            flow_y = np.mean(roi_flow[..., 1])
+            flow_consistency = math.sqrt(flow_x**2 + flow_y**2) / (avg_magnitude + 1e-5)
+        else:
+            flow_consistency = 1.0
+
+        if (motion_pixels >= MIN_MOTION_PIXELS
+                and MIN_BIRD_SPEED < avg_magnitude < MAX_BIRD_SPEED
+                and (flow_consistency < DIRECTIONAL_CHANGE_THRESHOLD
+                     or not is_likely_cloud(roi_bgr, (x, y, w, h)))):
+            detection['motion_score'] = avg_magnitude
+            detection['motion_pixels'] = motion_pixels
+            detection['flow_consistency'] = flow_consistency
+            moving_birds.append(detection)
+
+    return moving_birds, current_gray_roi
+
+
+class ImprovedBirdTracker:
+    def __init__(self):
+        self.tracks = {}
+        self.track_id = 0
+        self.confirmed_flying_birds = set()
+
+    def update_tracks(self, detections):
+        matched_tracks = {}
+        current_frame_birds = []
+
+        for detection in detections:
+            x, y = detection['center']
+            best_match, min_dist = None, float('inf')
+            for tid, tdata in self.tracks.items():
+                if tid not in matched_tracks and tdata['positions']:
+                    lx, ly = tdata['positions'][-1]
+                    d = math.sqrt((x - lx)**2 + (y - ly)**2)
+                    if d < min_dist and d < MAX_MATCHING_DISTANCE:
+                        min_dist, best_match = d, tid
+            if best_match is not None:
+                self.tracks[best_match]['positions'].append((x, y))
+                self.tracks[best_match]['stationary_count'] = 0
+                self.tracks[best_match]['detections'].append(detection)
+                matched_tracks[best_match] = detection
+                if self.is_flying_improved(best_match):
+                    self.confirmed_flying_birds.add(best_match)
+                    current_frame_birds.append(detection)
+            else:
+                self.tracks[self.track_id] = {
+                    'positions': [(x, y)],
+                    'stationary_count': 0,
+                    'detections': [detection],
+                }
+                self.track_id += 1
+
+        for tid in list(self.tracks):
+            if tid not in matched_tracks:
+                self.tracks[tid]['stationary_count'] += 1
+                if self.tracks[tid]['stationary_count'] >= MAX_STATIONARY_FRAMES:
+                    del self.tracks[tid]
+
+        return current_frame_birds
+
+    def is_flying_improved(self, track_id):
+        positions = self.tracks[track_id]['positions']
+        if len(positions) < MIN_FLIGHT_DURATION:
+            return False
+
+        total_distance = 0
+        directions = []
+        for i in range(1, len(positions)):
+            dx = positions[i][0] - positions[i-1][0]
+            dy = positions[i][1] - positions[i-1][1]
+            total_distance += math.sqrt(dx**2 + dy**2)
+            if dx != 0 or dy != 0:
+                directions.append(math.atan2(dy, dx))
+
+        direction_changes = 0
+        for i in range(1, len(directions)):
+            diff = abs(directions[i] - directions[i-1])
+            if diff > math.pi:
+                diff = 2 * math.pi - diff
+            if diff > 0.3:
+                direction_changes += 1
+
+        good_bird_features = 0
+        dets = self.tracks[track_id]['detections']
+        scores = [d['motion_score'] for d in dets if 'motion_score' in d]
+        if scores and np.mean(scores) > MIN_BIRD_SPEED:
+            good_bird_features += 1
+        flows = [d['flow_consistency'] for d in dets if 'flow_consistency' in d]
+        if flows and np.mean(flows) < DIRECTIONAL_CHANGE_THRESHOLD:
+            good_bird_features += 1
+        ratios = [d['aspect_ratio'] for d in dets if 'aspect_ratio' in d]
+        if ratios and np.std(ratios) > 0.1:
+            good_bird_features += 1
+
+        return total_distance > MIN_MOVEMENT_DISTANCE and (direction_changes > 0 or good_bird_features >= 1)
+
+    def get_unique_flying_birds_count(self):
+        return len(self.confirmed_flying_birds)
+
+    def get_currently_active_birds(self):
+        return len(self.confirmed_flying_birds & self.tracks.keys())
 
 
 def process_video_with_unique_bird_counting(video_path, show_display=False, threshold=None):
@@ -321,11 +323,7 @@ def process_video_with_unique_bird_counting(video_path, show_display=False, thre
     print(f"- Resolution: {width}x{height} → {new_width}x{new_height}")
     print(f"- FPS: {fps}, Frames: {total_frames}, Skip: every {FRAME_SKIP}")
 
-    bird_tracker = EnhancedBirdTracker(
-        max_stationary_frames=15,
-        min_movement_distance=12 * RESIZE_FACTOR,
-        min_flight_duration=3,
-    )
+    bird_tracker = ImprovedBirdTracker()
 
     roi_bottom_pct = float(INITIAL_ROI_BOTTOM_PERCENTAGE)
     detection_boundary = int(new_height * roi_bottom_pct / 100.0)
@@ -354,6 +352,7 @@ def process_video_with_unique_bird_counting(video_path, show_display=False, thre
                 roi_bottom_pct = analyze_and_set_roi(frame, roi_bottom_pct)
                 detection_boundary = int(new_height * roi_bottom_pct / 100.0)
 
+            roi_bgr = frame[:detection_boundary, :]
             current_detections, current_gray_roi = detect_birds_in_frame(
                 frame, new_height, detection_boundary, threshold=threshold
             )
@@ -364,7 +363,7 @@ def process_video_with_unique_bird_counting(video_path, show_display=False, thre
             ]
 
             moving_detections, prev_frame_cache = detect_moving_birds(
-                sky_detections, current_gray_roi, prev_frame_cache
+                sky_detections, current_gray_roi, prev_frame_cache, roi_bgr
             )
 
             bird_tracker.update_tracks(moving_detections)
