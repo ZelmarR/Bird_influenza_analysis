@@ -1,0 +1,32 @@
+# Environment
+.streamlit/secrets.toml
+backend/.env
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# macOS
+.DS_Store
+*.odt
+
+# Video and large media files
+*.MP4
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.MOV
+*_detected.mp4
+
+# Data folders with raw videos
+OneDrive_1_6-3-2026/
+
+# Node
+node_modules/
