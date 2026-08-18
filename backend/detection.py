@@ -14,13 +14,13 @@ FRAME_COVERAGE_PERCENTAGE = 0.6
 FRAME_SKIP = 1
 RESIZE_FACTOR = 0.7
 BINARY_THRESHOLD = 127
-motion_threshold = 10
+motion_threshold = 5       # lowered from 10: fast birds leave little diff inside their new bbox
 MIN_BIRD_AREA = 15
 MAX_BIRD_AREA = 800
 MIN_ASPECT_RATIO = 0.4
 MAX_ASPECT_RATIO = 3.0
 MIN_BIRD_SOLIDITY = 0.6
-MIN_MOTION_PIXELS = 5
+MIN_MOTION_PIXELS = 2      # lowered from 5: fast birds may only partially overlap previous position
 ROI_UPDATE_INTERVAL = 12
 ROI_SMOOTHING_FACTOR = 0.5
 INITIAL_ROI_BOTTOM_PERCENTAGE = 60
@@ -158,9 +158,11 @@ class EnhancedBirdTracker:
         self.confirmed_flying_birds = set()
         self.bird_flight_status = {}
 
-    # Maximum pixel distance to link a detection to an existing track.
-    # Kept tight (50px at 0.7 resize) so flock birds don't steal each other's tracks.
-    MAX_MATCH_DIST = 50
+    # Raised from 50 → 90px (at 0.7 resize) so fast-moving birds that jump a large
+    # distance between frames still link to their existing track rather than spawning
+    # a new one on every frame. Flock collision risk is low because Hungarian assignment
+    # is globally optimal — only the closest unambiguous match wins.
+    MAX_MATCH_DIST = 90
 
     def update_tracks(self, detections):
         matched_tracks = {}   # track_id -> detection
@@ -247,8 +249,8 @@ class EnhancedBirdTracker:
 
         return (
             total_distance > self.min_movement_distance
-            and avg_movement > 2.0
-            and movement_consistency > 0.3
+            and avg_movement > 1.0      # lowered from 2.0: catches slower flock birds
+            and movement_consistency > 0.2  # lowered from 0.3: flock birds can jink/turn
         )
 
     def get_unique_flying_birds_count(self):
@@ -267,8 +269,18 @@ def detect_birds_in_frame(frame, frame_height=None, detection_boundary=None, thr
     roi = frame[:detection_boundary, :]
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 
-    t = threshold if threshold is not None else BINARY_THRESHOLD
-    _, thresh = cv2.threshold(gray, t, 255, cv2.THRESH_BINARY_INV)
+    if threshold is not None:
+        # User-supplied fixed threshold (debugging / tuning path)
+        _, thresh = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY_INV)
+    else:
+        # Adaptive Gaussian thresholding handles local contrast variation (overcast
+        # sky, partial shade) that defeats a single global value.
+        thresh = cv2.adaptiveThreshold(
+            gray, 255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY_INV,
+            blockSize=11, C=2,
+        )
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
 
@@ -315,8 +327,8 @@ def process_video_with_unique_bird_counting(video_path, show_display=False, thre
 
     bird_tracker = EnhancedBirdTracker(
         max_stationary_frames=15,          # ~0.5s at 30fps before a track is dropped
-        min_movement_distance=18 * RESIZE_FACTOR,  # lower threshold catches slower flock birds
-        min_flight_duration=6,             # 6 consecutive frames to confirm a flying bird
+        min_movement_distance=12 * RESIZE_FACTOR,  # lowered: fast birds cover more px/frame
+        min_flight_duration=3,             # reduced from 6: fast birds exit ROI quickly
     )
 
     roi_bottom_pct = float(INITIAL_ROI_BOTTOM_PERCENTAGE)
@@ -438,8 +450,8 @@ def process_video_streaming(video_path, threshold=None):
 
     bird_tracker = EnhancedBirdTracker(
         max_stationary_frames=15,          # ~0.5s at 30fps before a track is dropped
-        min_movement_distance=18 * RESIZE_FACTOR,  # lower threshold catches slower flock birds
-        min_flight_duration=6,             # 6 consecutive frames to confirm a flying bird
+        min_movement_distance=12 * RESIZE_FACTOR,  # lowered: fast birds cover more px/frame
+        min_flight_duration=3,             # reduced from 6: fast birds exit ROI quickly
     )
 
     roi_bottom_pct = float(INITIAL_ROI_BOTTOM_PERCENTAGE)
