@@ -10,19 +10,21 @@ log = logging.getLogger("bird_counter")
 
 FRAME_SKIP                    = 1
 RESIZE_FACTOR                 = 0.8
-MIN_BIRD_AREA                 = 15
+MIN_BIRD_AREA                 = 4        # distant birds can be 2×2 px dots
 MAX_BIRD_AREA                 = 800
-MIN_ASPECT_RATIO              = 0.4
-MAX_ASPECT_RATIO              = 3.0
-MIN_BIRD_SOLIDITY             = 0.6
-MOTION_THRESHOLD              = 10
-MIN_MOTION_PIXELS             = 5
-MAX_STATIONARY_FRAMES         = 10
-MIN_MOVEMENT_DISTANCE         = 15
-MIN_FLIGHT_DURATION           = 3
-MAX_MATCHING_DISTANCE         = 80
-MIN_BIRD_SPEED                = 3
-MAX_BIRD_SPEED                = 100
+MIN_ASPECT_RATIO              = 0.3
+MAX_ASPECT_RATIO              = 4.0
+MIN_BIRD_SOLIDITY             = 0.4      # tiny blobs have very noisy solidity
+MOTION_THRESHOLD              = 6        # subtle brightness shift for slow/distant birds
+MIN_MOTION_PIXELS             = 1        # a 4px blob can only change 1-2 pixels
+MAX_STATIONARY_FRAMES         = 10       # unconfirmed tracks dropped after this many missed frames
+MAX_STATIONARY_FRAMES_CONFIRMED = 60    # confirmed tracks kept alive much longer (bird flew away temporarily)
+MIN_MOVEMENT_DISTANCE         = 4
+MIN_FLIGHT_DURATION           = 4
+MAX_MATCHING_DISTANCE         = 140
+MAX_MATCHING_DISTANCE_CONFIRMED = 220   # wider re-match radius for confirmed birds returning to frame
+MIN_BIRD_SPEED                = 0.5      # near-zero flow for slow distant birds
+MAX_BIRD_SPEED                = 180
 DIRECTIONAL_CHANGE_THRESHOLD  = 0.7
 ROI_UPDATE_INTERVAL           = 12
 ROI_SMOOTHING_FACTOR          = 0.5
@@ -132,7 +134,7 @@ def detect_birds_in_frame(frame, frame_height=None, detection_boundary=None, thr
 
     roi = frame[:detection_boundary, :]
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
 
     if threshold is not None:
         _, thresh = cv2.threshold(blurred, threshold, 255, cv2.THRESH_BINARY_INV)
@@ -141,7 +143,7 @@ def detect_birds_in_frame(frame, frame_height=None, detection_boundary=None, thr
             blurred, 255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY_INV,
-            11, 2,
+            7, 2,
         )
 
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -182,7 +184,7 @@ def detect_moving_birds(current_detections, current_gray_roi, prev_gray_roi, roi
     # levels=2 and winsize=11 instead of notebook's 3/15 — ~4x faster, adequate for small birds.
     flow = cv2.calcOpticalFlowFarneback(
         prev_gray_roi, current_gray_roi, None,
-        0.5, 2, 11, 3, 5, 1.2, 0,
+        0.5, 3, 15, 3, 5, 1.2, 0,
     )
     frame_diff = cv2.absdiff(prev_gray_roi, current_gray_roi)
     fh, fw = current_gray_roi.shape[:2]
@@ -238,9 +240,19 @@ class ImprovedBirdTracker:
             best_match, min_dist = None, float('inf')
             for tid, tdata in self.tracks.items():
                 if tid not in matched_tracks and tdata['positions']:
-                    lx, ly = tdata['positions'][-1]
+                    positions = tdata['positions']
+                    lx, ly = positions[-1]
+                    # for confirmed tracks that have been missing, extrapolate position
+                    # using last known velocity so we search where the bird likely drifted to
+                    if tid in self.confirmed_flying_birds and tdata['stationary_count'] > 0 and len(positions) >= 2:
+                        vx = positions[-1][0] - positions[-2][0]
+                        vy = positions[-1][1] - positions[-2][1]
+                        frames_missing = tdata['stationary_count']
+                        lx = lx + vx * frames_missing
+                        ly = ly + vy * frames_missing
                     d = math.sqrt((x - lx)**2 + (y - ly)**2)
-                    if d < min_dist and d < MAX_MATCHING_DISTANCE:
+                    radius = MAX_MATCHING_DISTANCE_CONFIRMED if tid in self.confirmed_flying_birds else MAX_MATCHING_DISTANCE
+                    if d < min_dist and d < radius:
                         min_dist, best_match = d, tid
             if best_match is not None:
                 self.tracks[best_match]['positions'].append((x, y))
@@ -261,7 +273,9 @@ class ImprovedBirdTracker:
         for tid in list(self.tracks):
             if tid not in matched_tracks:
                 self.tracks[tid]['stationary_count'] += 1
-                if self.tracks[tid]['stationary_count'] >= MAX_STATIONARY_FRAMES:
+                # confirmed birds stay alive much longer — they may just be temporarily too small to detect
+                limit = MAX_STATIONARY_FRAMES_CONFIRMED if tid in self.confirmed_flying_birds else MAX_STATIONARY_FRAMES
+                if self.tracks[tid]['stationary_count'] >= limit:
                     del self.tracks[tid]
 
         return current_frame_birds
