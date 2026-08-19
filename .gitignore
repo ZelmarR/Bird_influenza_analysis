@@ -27,6 +27,8 @@ build/
 
 # Data folders with raw videos
 OneDrive_1_6-3-2026/
+bird_counting_v2_extracted/
+.streamlit/
 
 # Node
 node_modules/

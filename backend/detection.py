@@ -1,4 +1,5 @@
 import cv2
+import json
 import numpy as np
 import math
 import logging
@@ -455,6 +456,13 @@ def process_video_streaming(video_path, threshold=None):
     max_concurrent_birds = 0
     start_time = time.time()
 
+    first_detection_frame = None
+    peak_concurrent_frame = 0
+    birds_confirmed_at_frame = []
+    prev_unique = 0
+    total_motion_sum = 0.0
+    total_motion_count = 0
+
     try:
         while True:
             for _ in range(FRAME_SKIP - 1):
@@ -499,7 +507,22 @@ def process_video_streaming(video_path, threshold=None):
 
             unique_flying_birds = bird_tracker.get_unique_flying_birds_count()
             currently_active = bird_tracker.get_currently_active_birds()
-            max_concurrent_birds = max(max_concurrent_birds, currently_active)
+
+            if first_detection_frame is None and unique_flying_birds > 0:
+                first_detection_frame = frame_count
+
+            if currently_active > max_concurrent_birds:
+                max_concurrent_birds = currently_active
+                peak_concurrent_frame = frame_count
+
+            if unique_flying_birds > prev_unique:
+                birds_confirmed_at_frame.extend([frame_count] * (unique_flying_birds - prev_unique))
+                prev_unique = unique_flying_birds
+
+            for det in moving_detections:
+                if 'motion_score' in det:
+                    total_motion_sum += det['motion_score']
+                    total_motion_count += 1
 
             if frame_count == FRAME_SKIP:
                 log.info("[detection] Frame 1 processed: detections=%d sky=%d moving=%d",
@@ -545,6 +568,14 @@ def process_video_streaming(video_path, threshold=None):
                  unique_flying_birds, frame_count, total_time,
                  frame_count / total_time if total_time > 0 else 0)
 
+        minute_counts = []
+        if fps > 0 and total_frames > 0:
+            total_minutes = int(total_frames / fps / 60) + 1
+            for m in range(total_minutes):
+                start_f = m * 60 * fps
+                end_f = (m + 1) * 60 * fps
+                minute_counts.append(sum(1 for f in birds_confirmed_at_frame if start_f <= f < end_f))
+
         yield {
             "kind": "result",
             "data": {
@@ -557,6 +588,11 @@ def process_video_streaming(video_path, threshold=None):
                 "duration_seconds": total_frames / fps if fps > 0 else 0,
                 "processing_time": round(total_time, 1),
                 "processing_speed": round(frame_count / total_time, 2) if total_time > 0 else 0,
+                "first_detection_second": round(first_detection_frame / fps, 1) if first_detection_frame and fps > 0 else None,
+                "peak_concurrent_second": round(peak_concurrent_frame / fps, 1) if fps > 0 else 0,
+                "birds_per_minute": json.dumps(minute_counts),
+                "track_noise_ratio": round(unique_flying_birds / max(1, bird_tracker.track_id), 3),
+                "avg_motion_score": round(total_motion_sum / max(1, total_motion_count), 2),
             },
         }
 

@@ -52,7 +52,8 @@ def health():
 @app.get("/results/{location}")
 def get_results(location: Location, _=Depends(get_current_user)):
     df, _ = download_csv(location)
-    return df.to_dict(orient="records")
+    records = df.to_dict(orient="records")
+    return [{k: (None if isinstance(v, float) and v != v else v) for k, v in row.items()} for row in records]
 
 
 @app.websocket("/ws/process")
@@ -229,7 +230,18 @@ def _save_result(result: dict, filename: str, location: str) -> None:
         "max_concurrent_birds": result["max_concurrent_birds"],
         "duration_seconds": round(result["duration_seconds"], 1),
         "processing_time": round(result["processing_time"], 1),
+        "total_tracks": result.get("total_tracks"),
+        "frames_processed": result.get("frames_processed"),
+        "first_detection_second": result.get("first_detection_second"),
+        "peak_concurrent_second": result.get("peak_concurrent_second"),
+        "birds_per_minute": result.get("birds_per_minute"),
+        "track_noise_ratio": result.get("track_noise_ratio"),
+        "avg_motion_score": result.get("avg_motion_score"),
     }
     import pandas as pd
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+    for col in RESULTS_COLUMNS:
+        if col not in df.columns:
+            df[col] = None
+    df = df[RESULTS_COLUMNS]
     upload_csv(df, sha, location)

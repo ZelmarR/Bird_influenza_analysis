@@ -14,6 +14,13 @@ RESULTS_COLUMNS = [
     "max_concurrent_birds",
     "duration_seconds",
     "processing_time",
+    "total_tracks",
+    "frames_processed",
+    "first_detection_second",
+    "peak_concurrent_second",
+    "birds_per_minute",
+    "track_noise_ratio",
+    "avg_motion_score",
 ]
 
 USERS_COLUMNS = ["id", "email", "password_hash", "created_at"]
