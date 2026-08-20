@@ -9,6 +9,11 @@ from typing import Literal
 from dotenv import load_dotenv
 load_dotenv()  # loads backend/.env when running locally; env vars from Railway take precedence
 
+_REQUIRED_ENV = ["JWT_SECRET", "GITHUB_TOKEN", "GITHUB_REPO"]
+_missing = [v for v in _REQUIRED_ENV if not os.environ.get(v)]
+if _missing:
+    raise RuntimeError(f"Missing required environment variables: {', '.join(_missing)}")
+
 import cv2
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware

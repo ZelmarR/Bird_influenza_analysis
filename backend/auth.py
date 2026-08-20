@@ -11,7 +11,9 @@ from pydantic import BaseModel, EmailStr
 
 from github_utils import download_users, upload_users
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "change-me-in-production")
+JWT_SECRET = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET environment variable is not set")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 24
 
