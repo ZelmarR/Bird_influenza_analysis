@@ -55,8 +55,8 @@ def health():
 
 
 @app.get("/results/{location}")
-def get_results(location: Location, _=Depends(get_current_user)):
-    df, _ = download_csv(location)
+def get_results(location: Location, user: str = Depends(get_current_user)):
+    df, _ = download_csv(location, user_email=user)
     records = df.to_dict(orient="records")
     return [{k: (None if isinstance(v, float) and v != v else v) for k, v in row.items()} for row in records]
 
@@ -79,6 +79,7 @@ async def process_video(websocket: WebSocket):
         location = meta.get("location", "")
         filename = meta.get("filename", "video.mp4")
         threshold = max(50, min(220, int(meta.get("threshold", 127))))
+        recorded_at = meta.get("recorded_at") or None
 
         # Validate token and location
         from auth import verify_token
@@ -175,7 +176,7 @@ async def process_video(websocket: WebSocket):
             if result:
                 log.info("Saving result to GitHub...")
                 try:
-                    _save_result(result, filename, location)
+                    _save_result(result, filename, location, user=user, recorded_at=recorded_at)
                     log.info("GitHub save OK")
                 except Exception as gh_err:
                     log.error("GitHub save failed: %s", gh_err)
@@ -225,12 +226,13 @@ async def async_generator(sync_gen):
     await task
 
 
-def _save_result(result: dict, filename: str, location: str) -> None:
-    df, sha = download_csv(location)
+def _save_result(result: dict, filename: str, location: str, user: str = "", recorded_at: str | None = None) -> None:
+    df, sha = download_csv(location, user_email=user)
     new_row = {
         "video_name": filename,
         "location": location,
         "upload_date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "recorded_at": recorded_at,
         "unique_flying_birds": result["unique_flying_birds"],
         "max_concurrent_birds": result["max_concurrent_birds"],
         "duration_seconds": round(result["duration_seconds"], 1),
@@ -249,4 +251,4 @@ def _save_result(result: dict, filename: str, location: str) -> None:
         if col not in df.columns:
             df[col] = None
     df = df[RESULTS_COLUMNS]
-    upload_csv(df, sha, location)
+    upload_csv(df, sha, location, user_email=user)
