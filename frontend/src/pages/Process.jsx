@@ -9,6 +9,8 @@ export default function Process() {
   const [location, setLocation] = useState("A");
   const [threshold, setThreshold] = useState(127);
   const [file, setFile] = useState(null);
+  const [recordedDate, setRecordedDate] = useState("");
+  const [recordedTime, setRecordedTime] = useState("");
   const [status, setStatus] = useState("idle"); // idle | uploading | processing | done | error
   const [progress, setProgress] = useState(0);
   const [uniqueBirds, setUniqueBirds] = useState(0);
@@ -62,8 +64,11 @@ export default function Process() {
 
     ws.onopen = async () => {
       console.log("[ws] connected");
-      // 1. Send metadata
-      const meta = { token, location, filename: file.name, threshold };
+      // 1. Send metadata (include recorded_at if provided)
+      const recorded_at = recordedDate && recordedTime
+        ? `${recordedDate}T${recordedTime}`
+        : recordedDate || undefined;
+      const meta = { token, location, filename: file.name, threshold, recorded_at };
       console.log("[ws] sending metadata", meta);
       ws.send(JSON.stringify(meta));
 
@@ -156,6 +161,38 @@ export default function Process() {
               Location {loc}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Recording date & time */}
+      <div className="card">
+        <h2 style={{ fontSize: 17, marginBottom: 14, color: "#374151" }}>
+          Recording Date &amp; Time
+        </h2>
+        <p style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
+          Enter when the video was recorded. This is used as the X-axis label in the Analysis charts.
+        </p>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Date</label>
+            <input
+              type="date"
+              value={recordedDate}
+              onChange={e => setRecordedDate(e.target.value)}
+              disabled={isRunning}
+              placeholder="YYYY-MM-DD"
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Time</label>
+            <input
+              type="time"
+              value={recordedTime}
+              onChange={e => setRecordedTime(e.target.value)}
+              disabled={isRunning}
+              placeholder="HH:MM"
+            />
+          </div>
         </div>
       </div>
 

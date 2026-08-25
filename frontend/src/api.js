@@ -30,11 +30,11 @@ export async function login(email, password) {
   localStorage.setItem("token", data.access_token);
 }
 
-export async function register(email, password) {
+export async function register(email, password, name = "", department = "") {
   const res = await fetch(`${BASE_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, name, department }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));

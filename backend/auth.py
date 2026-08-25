@@ -21,12 +21,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer()
 router = APIRouter()
 
-USERS_COLUMNS = ["id", "email", "password_hash", "created_at"]
+USERS_COLUMNS = ["id", "email", "name", "department", "password_hash", "created_at"]
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
+    name: str = ""
+    department: str = ""
 
 
 class LoginRequest(BaseModel):
@@ -72,6 +74,8 @@ def register(req: RegisterRequest):
     new_row = pd.DataFrame([{
         "id": str(uuid.uuid4()),
         "email": req.email,
+        "name": req.name,
+        "department": req.department,
         "password_hash": _hash(req.password),
         "created_at": datetime.utcnow().isoformat(),
     }])

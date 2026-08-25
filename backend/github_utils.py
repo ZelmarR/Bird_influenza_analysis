@@ -10,6 +10,7 @@ RESULTS_COLUMNS = [
     "video_name",
     "location",
     "upload_date",
+    "recorded_at",
     "unique_flying_birds",
     "max_concurrent_birds",
     "duration_seconds",
@@ -23,7 +24,7 @@ RESULTS_COLUMNS = [
     "avg_motion_score",
 ]
 
-USERS_COLUMNS = ["id", "email", "password_hash", "created_at"]
+USERS_COLUMNS = ["id", "email", "name", "department", "password_hash", "created_at"]
 
 _API = "https://api.github.com"
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
@@ -83,17 +84,25 @@ def _commit_file(path: str, content_str: str, sha: str | None, message: str) -> 
 
 # ── Results (per location) ────────────────────────────────────────────────────
 
-def download_csv(location: str) -> tuple[pd.DataFrame, str | None]:
-    path = f"results_{location}.csv"
+def _user_slug(email: str) -> str:
+    """Convert an email to a safe filename component."""
+    import re
+    return re.sub(r"[^a-zA-Z0-9_\-]", "_", email)
+
+
+def download_csv(location: str, user_email: str = "") -> tuple[pd.DataFrame, str | None]:
+    slug = _user_slug(user_email) if user_email else "shared"
+    path = f"results/{slug}/results_{location}.csv"
     content, sha = _fetch_file(path)
     if not content:
         return pd.DataFrame(columns=RESULTS_COLUMNS), None
     return pd.read_csv(io.StringIO(content)), sha
 
 
-def upload_csv(df: pd.DataFrame, sha: str | None, location: str) -> None:
-    path = f"results_{location}.csv"
-    _commit_file(path, df.to_csv(index=False), sha, f"Update results for location {location}")
+def upload_csv(df: pd.DataFrame, sha: str | None, location: str, user_email: str = "") -> None:
+    slug = _user_slug(user_email) if user_email else "shared"
+    path = f"results/{slug}/results_{location}.csv"
+    _commit_file(path, df.to_csv(index=False), sha, f"Update results for location {location} ({slug})")
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
