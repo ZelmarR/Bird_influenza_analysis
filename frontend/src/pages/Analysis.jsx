@@ -14,40 +14,6 @@ function fmt(val, decimals = 1) {
   return isNaN(n) ? "—" : n.toFixed(decimals);
 }
 
-function StatTile({ label, value, hint }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div
-      style={{
-        flex: "1 1 180px",
-        background: "#f8fafc",
-        border: "1px solid #e2e8f0",
-        borderRadius: 10,
-        padding: "16px 20px",
-        textAlign: "center",
-        position: "relative",
-        cursor: hint ? "default" : undefined,
-      }}
-      onMouseEnter={() => hint && setShow(true)}
-      onMouseLeave={() => setShow(false)}
-    >
-      <div style={{ fontSize: 24, fontWeight: 700, color: "#1e293b" }}>{value}</div>
-      <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-        {label}{hint && <span style={{ color: "#94a3b8", marginLeft: 4 }}>ⓘ</span>}
-      </div>
-      {show && hint && (
-        <div style={{
-          position: "absolute", bottom: "110%", left: "50%", transform: "translateX(-50%)",
-          background: "#1e293b", color: "#fff", borderRadius: 6,
-          padding: "7px 11px", fontSize: 12, whiteSpace: "normal",
-          width: 220, boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
-          lineHeight: 1.5, zIndex: 20,
-        }}>{hint}</div>
-      )}
-    </div>
-  );
-}
-
 function birdsPerHour(row) {
   if (!row?.birds_per_minute) return null;
   let arr;
@@ -62,6 +28,31 @@ function birdsPerHour(row) {
   return Math.round((windowAvgs.reduce((s, v) => s + v, 0) / windowAvgs.length) * 12);
 }
 
+function StatCell({ label, value, hint }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div
+      className="stat-cell"
+      onMouseEnter={() => hint && setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <div className="stat-cell-value">{value}</div>
+      <div className="stat-cell-label">
+        {label}
+        {hint && <span style={{ color: "var(--text-muted)", marginLeft: 4 }}>ⓘ</span>}
+      </div>
+      {show && hint && (
+        <div style={{
+          position: "absolute", bottom: "110%", left: "50%", transform: "translateX(-50%)",
+          background: "var(--charcoal)", color: "#fff", borderRadius: 4,
+          padding: "8px 12px", fontSize: 12, whiteSpace: "normal",
+          width: 220, zIndex: 20, lineHeight: 1.5,
+        }}>{hint}</div>
+      )}
+    </div>
+  );
+}
+
 function TooltipTh({ children, tip }) {
   const [show, setShow] = useState(false);
   return (
@@ -71,14 +62,13 @@ function TooltipTh({ children, tip }) {
       onMouseLeave={() => setShow(false)}
     >
       {children}{" "}
-      <span style={{ color: "#94a3b8", fontSize: 11 }}>ⓘ</span>
+      <span style={{ color: "var(--text-muted)", fontSize: 10 }}>ⓘ</span>
       {show && (
         <div style={{
           position: "absolute", top: "100%", left: 0, zIndex: 10,
-          background: "#1e293b", color: "#fff", borderRadius: 6,
-          padding: "7px 11px", fontSize: 12, whiteSpace: "normal",
-          width: 220, boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
-          fontWeight: 400, lineHeight: 1.5,
+          background: "var(--charcoal)", color: "#fff", borderRadius: 4,
+          padding: "8px 12px", fontSize: 12, whiteSpace: "normal",
+          width: 220, fontWeight: 400, lineHeight: 1.5,
         }}>{tip}</div>
       )}
     </th>
@@ -90,20 +80,18 @@ const CHART_MARGIN = { top: 12, right: 24, bottom: 64, left: 74 };
 function RotatedXTick({ x, y, payload }) {
   return (
     <g transform={`translate(${x},${y})`}>
-      <text x={0} y={0} dy={8} textAnchor="end" fill="#64748b" fontSize={11} transform="rotate(-35)">
+      <text x={0} y={0} dy={8} textAnchor="end" fill="var(--text-muted)" fontSize={11} transform="rotate(-35)">
         {payload.value}
       </text>
     </g>
   );
 }
 
-function ChartCard({ title, description, children }) {
+function ChartSection({ title, description, children }) {
   return (
-    <div className="card" style={{ marginBottom: 20 }}>
-      <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>{title}</h3>
-      {description && (
-        <p style={{ fontSize: 12, color: "#64748b", marginBottom: 16, lineHeight: 1.6 }}>{description}</p>
-      )}
+    <div className="chart-section">
+      <div className="chart-title">{title}</div>
+      {description && <p className="chart-desc">{description}</p>}
       {children}
     </div>
   );
@@ -129,12 +117,19 @@ function LocationTab({ location }) {
 
   useEffect(() => { load(); }, [location]);
 
-  if (loading) return <p style={{ color: "#64748b", padding: "12px 0" }}>Loading…</p>;
-  if (error) return <p className="error-msg">{error}</p>;
+  if (loading) return (
+    <p style={{ color: "var(--text-muted)", padding: "12px 0", fontFamily: "'DM Mono', monospace", fontSize: 13 }}>
+      Loading…
+    </p>
+  );
+  if (error) return <p style={{ color: "#ef4444", fontSize: 13 }}>{error}</p>;
   if (rows.length === 0) return (
-    <div>
-      <p style={{ color: "#64748b", marginBottom: 16 }}>
-        No results yet for Location {location}. Process a video first, then come back here.
+    <div className="panel" style={{ textAlign: "center", padding: "48px 32px" }}>
+      <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 22, color: "var(--charcoal)", marginBottom: 10 }}>
+        No results yet
+      </div>
+      <p style={{ color: "var(--text-muted)", fontSize: 14, marginBottom: 20, maxWidth: 380, margin: "0 auto 20px" }}>
+        Location {location} has no processed videos. Upload a field recording on the Process page first.
       </p>
       <button className="btn btn-outline" onClick={load}>Refresh</button>
     </div>
@@ -169,28 +164,29 @@ function LocationTab({ location }) {
 
   return (
     <div>
+      {/* Header row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <span style={{ color: "#374151", fontSize: 14, fontWeight: 600 }}>
-          {rows.length} video{rows.length !== 1 ? "s" : ""} processed at this location
+        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: "var(--text-muted)", letterSpacing: "0.05em" }}>
+          {rows.length} VIDEO{rows.length !== 1 ? "S" : ""} · LOCATION {location}
         </span>
-        <button className="btn btn-outline" onClick={load} style={{ fontSize: 13, padding: "6px 14px" }}>
+        <button className="btn btn-outline" onClick={load} style={{ fontSize: 12, padding: "6px 14px" }}>
           Refresh
         </button>
       </div>
 
-      {/* Summary tiles */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 28 }}>
-        <StatTile
+      {/* Summary stat strip */}
+      <div className="stat-row" style={{ marginBottom: 24 }}>
+        <StatCell
           label="Total Unique Birds"
           value={totalUnique}
           hint="Sum of all unique flying birds confirmed across every video at this location."
         />
-        <StatTile
+        <StatCell
           label="Avg Birds / Hour"
           value={avgBph}
           hint="Average estimated bird activity rate across all videos, extrapolated to birds per hour."
         />
-        <StatTile
+        <StatCell
           label="Avg Detection Latency"
           value={avgLatency === "—" ? "—" : `${avgLatency}s`}
           hint="Average time (seconds) into a video before the first confirmed flying bird appeared."
@@ -198,26 +194,24 @@ function LocationTab({ location }) {
       </div>
 
       {/* Results table */}
-      <div className="card" style={{ overflowX: "auto", padding: 0 }}>
-        <div style={{ padding: "16px 20px 0", borderBottom: "1px solid #f1f5f9" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: 0, paddingBottom: 12 }}>
-            Per-Video Results
-          </h3>
+      <div className="panel" style={{ padding: 0, marginBottom: 24, overflowX: "auto" }}>
+        <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid var(--border-light)" }}>
+          <div className="panel-label">Per-Video Results</div>
         </div>
         <div style={{ overflowX: "auto" }}>
-          <table>
+          <table className="data-table">
             <thead>
               <tr>
                 <TooltipTh tip="File name of the processed video">Video</TooltipTh>
-                <TooltipTh tip="Date and time the video was recorded (entered at upload time)">Recorded</TooltipTh>
-                <TooltipTh tip="Total number of individually tracked flying birds confirmed in this video">Unique Birds</TooltipTh>
-                <TooltipTh tip="Highest number of birds flying simultaneously in any single frame">Max Concurrent</TooltipTh>
+                <TooltipTh tip="Date and time the video was recorded">Recorded</TooltipTh>
+                <TooltipTh tip="Total individually tracked flying birds confirmed">Unique Birds</TooltipTh>
+                <TooltipTh tip="Highest number of birds flying simultaneously in any frame">Max Concurrent</TooltipTh>
                 <TooltipTh tip="Length of the video clip in seconds">Duration (s)</TooltipTh>
-                <TooltipTh tip="Wall-clock time taken by the server to fully process this video">Processing (s)</TooltipTh>
+                <TooltipTh tip="Wall-clock time taken by the server to process this video">Processing (s)</TooltipTh>
                 <TooltipTh tip="Seconds from video start until the first confirmed flying bird appeared">First Detection (s)</TooltipTh>
-                <TooltipTh tip="Time (seconds) at which the maximum number of concurrent birds occurred">Peak Second</TooltipTh>
+                <TooltipTh tip="Time (s) at which the maximum number of concurrent birds occurred">Peak Second</TooltipTh>
                 <TooltipTh tip="Confirmed birds ÷ all detection candidates. Closer to 1.0 = fewer false positives">Noise Ratio</TooltipTh>
-                <TooltipTh tip="Average pixel displacement per frame across detected bird regions (optical flow). Higher = faster-moving birds">Avg Motion (px/fr)</TooltipTh>
+                <TooltipTh tip="Average pixel displacement per frame across detected bird regions (optical flow)">Avg Motion (px/fr)</TooltipTh>
               </tr>
             </thead>
             <tbody>
@@ -227,14 +221,14 @@ function LocationTab({ location }) {
                     {r.video_name}
                   </td>
                   <td style={{ whiteSpace: "nowrap" }}>{r.recorded_at || r.upload_date || "—"}</td>
-                  <td><strong style={{ color: "#1e293b" }}>{r.unique_flying_birds}</strong></td>
-                  <td>{r.max_concurrent_birds}</td>
-                  <td>{fmt(r.duration_seconds, 0)}</td>
-                  <td>{fmt(r.processing_time, 0)}</td>
-                  <td>{fmt(r.first_detection_second)}</td>
-                  <td>{fmt(r.peak_concurrent_second)}</td>
-                  <td>{fmt(r.track_noise_ratio, 3)}</td>
-                  <td>{fmt(r.avg_motion_score)}</td>
+                  <td style={{ fontFamily: "'DM Mono', monospace", fontWeight: 600, color: "var(--forest)" }}>{r.unique_flying_birds}</td>
+                  <td style={{ fontFamily: "'DM Mono', monospace" }}>{r.max_concurrent_birds}</td>
+                  <td style={{ fontFamily: "'DM Mono', monospace" }}>{fmt(r.duration_seconds, 0)}</td>
+                  <td style={{ fontFamily: "'DM Mono', monospace" }}>{fmt(r.processing_time, 0)}</td>
+                  <td style={{ fontFamily: "'DM Mono', monospace" }}>{fmt(r.first_detection_second)}</td>
+                  <td style={{ fontFamily: "'DM Mono', monospace" }}>{fmt(r.peak_concurrent_second)}</td>
+                  <td style={{ fontFamily: "'DM Mono', monospace" }}>{fmt(r.track_noise_ratio, 3)}</td>
+                  <td style={{ fontFamily: "'DM Mono', monospace" }}>{fmt(r.avg_motion_score)}</td>
                 </tr>
               ))}
             </tbody>
@@ -243,134 +237,136 @@ function LocationTab({ location }) {
       </div>
 
       {/* Chart 1 */}
-      <ChartCard
-        title="Unique Flying Birds Detected — Over Time"
+      <ChartSection
+        title="Unique Flying Birds — Over Time"
         description="Total individually tracked birds confirmed per video session. An upward trend may indicate increasing bird activity at this location."
       >
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData} margin={CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
             <XAxis dataKey="name" tick={<RotatedXTick />} interval={0}>
-              <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={12} fill="#64748b" />
+              <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={11} fill="var(--text-muted)" />
             </XAxis>
-            <YAxis tick={{ fontSize: 11 }} allowDecimals={false}>
-              <Label value="Number of birds" angle={-90} position="insideLeft" offset={10} dy={60} fontSize={12} fill="#64748b" />
+            <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} allowDecimals={false}>
+              <Label value="Count (birds)" angle={-90} position="insideLeft" offset={10} dy={55} fontSize={11} fill="var(--text-muted)" />
             </YAxis>
-            <Tooltip formatter={(v, name) => [v, name]} />
-            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8 }} />
-            <Line type="monotone" dataKey="Unique Birds" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 5 }} activeDot={{ r: 7 }} connectNulls />
+            <Tooltip formatter={(v, name) => [v, name]} contentStyle={{ borderRadius: 4, border: "1px solid var(--border)", fontSize: 12 }} />
+            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8, fontSize: 12 }} />
+            <Line type="monotone" dataKey="Unique Birds" stroke="var(--forest)" strokeWidth={2.5} dot={{ r: 4, fill: "var(--forest)" }} activeDot={{ r: 6 }} connectNulls />
           </LineChart>
         </ResponsiveContainer>
-      </ChartCard>
+      </ChartSection>
 
       {/* Chart 2 */}
-      <ChartCard
-        title="Max Concurrent Birds in a Single Frame — Over Time"
+      <ChartSection
+        title="Max Concurrent Birds in a Single Frame"
         description="Peak simultaneous bird count within any one frame of each video. Indicates flock density at its highest moment."
       >
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData} margin={CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
             <XAxis dataKey="name" tick={<RotatedXTick />} interval={0}>
-              <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={12} fill="#64748b" />
+              <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={11} fill="var(--text-muted)" />
             </XAxis>
-            <YAxis tick={{ fontSize: 11 }} allowDecimals={false}>
-              <Label value="Number of birds" angle={-90} position="insideLeft" offset={10} dy={60} fontSize={12} fill="#64748b" />
+            <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} allowDecimals={false}>
+              <Label value="Count (birds)" angle={-90} position="insideLeft" offset={10} dy={55} fontSize={11} fill="var(--text-muted)" />
             </YAxis>
-            <Tooltip formatter={(v, name) => [v, name]} />
-            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8 }} />
-            <Line type="monotone" dataKey="Max Concurrent" stroke="#0891b2" strokeWidth={2.5} dot={{ r: 5 }} activeDot={{ r: 7 }} connectNulls />
+            <Tooltip formatter={(v, name) => [v, name]} contentStyle={{ borderRadius: 4, border: "1px solid var(--border)", fontSize: 12 }} />
+            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8, fontSize: 12 }} />
+            <Line type="monotone" dataKey="Max Concurrent" stroke="var(--sage)" strokeWidth={2.5} dot={{ r: 4, fill: "var(--sage)" }} activeDot={{ r: 6 }} connectNulls />
           </LineChart>
         </ResponsiveContainer>
-      </ChartCard>
+      </ChartSection>
 
       {/* Chart 3 */}
-      <ChartCard
+      <ChartSection
         title="Estimated Birds Per Hour — Per Video"
-        description="Extrapolated hourly rate: bird counts are averaged across 5-minute windows, then multiplied by 12 to estimate birds per hour. Useful for comparing activity intensity across sessions."
+        description="Extrapolated hourly rate: bird counts are averaged across 5-minute windows, then multiplied by 12. Useful for comparing activity intensity across sessions."
       >
         {bphData.length === 0 ? (
-          <p style={{ color: "#94a3b8", fontSize: 13 }}>No per-minute data available yet. Process a video to populate this chart.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: 13, fontFamily: "'DM Mono', monospace" }}>
+            No per-minute data available yet. Process a video to populate this chart.
+          </p>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={bphData} margin={CHART_MARGIN}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
               <XAxis dataKey="name" tick={<RotatedXTick />} interval={0}>
-                <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={12} fill="#64748b" />
+                <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={11} fill="var(--text-muted)" />
               </XAxis>
-              <YAxis tick={{ fontSize: 11 }} allowDecimals={false}>
-                <Label value="Birds per hour (est.)" angle={-90} position="insideLeft" offset={10} dy={70} fontSize={12} fill="#64748b" />
+              <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} allowDecimals={false}>
+                <Label value="Birds per hour (est.)" angle={-90} position="insideLeft" offset={10} dy={70} fontSize={11} fill="var(--text-muted)" />
               </YAxis>
-              <Tooltip formatter={(v) => [`${v} birds/hr`, "Estimated Rate"]} />
-              <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8 }} />
-              <Bar dataKey="Birds / Hour" fill="#16a34a" radius={[4, 4, 0, 0]} />
+              <Tooltip formatter={(v) => [`${v} birds/hr`, "Estimated Rate"]} contentStyle={{ borderRadius: 4, border: "1px solid var(--border)", fontSize: 12 }} />
+              <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8, fontSize: 12 }} />
+              <Bar dataKey="Birds / Hour" fill="var(--forest)" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
-      </ChartCard>
+      </ChartSection>
 
       {/* Chart 4 */}
-      <ChartCard
+      <ChartSection
         title="First Detection Latency — Over Time"
         description="How many seconds into each video the first confirmed flying bird appeared. Lower values mean birds appeared earlier in the recording."
       >
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData.filter(d => d["Detection Latency (s)"] !== null)} margin={CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
             <XAxis dataKey="name" tick={<RotatedXTick />} interval={0}>
-              <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={12} fill="#64748b" />
+              <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={11} fill="var(--text-muted)" />
             </XAxis>
-            <YAxis tick={{ fontSize: 11 }}>
-              <Label value="Time (seconds)" angle={-90} position="insideLeft" offset={10} dy={55} fontSize={12} fill="#64748b" />
+            <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }}>
+              <Label value="Time (seconds)" angle={-90} position="insideLeft" offset={10} dy={55} fontSize={11} fill="var(--text-muted)" />
             </YAxis>
-            <Tooltip formatter={(v) => [`${v}s`, "First Detection At"]} />
-            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8 }} />
-            <Line type="monotone" dataKey="Detection Latency (s)" stroke="#7c3aed" strokeWidth={2.5} dot={{ r: 5 }} activeDot={{ r: 7 }} connectNulls />
+            <Tooltip formatter={(v) => [`${v}s`, "First Detection At"]} contentStyle={{ borderRadius: 4, border: "1px solid var(--border)", fontSize: 12 }} />
+            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8, fontSize: 12 }} />
+            <Line type="monotone" dataKey="Detection Latency (s)" stroke="#7c3aed" strokeWidth={2.5} dot={{ r: 4, fill: "#7c3aed" }} activeDot={{ r: 6 }} connectNulls />
           </LineChart>
         </ResponsiveContainer>
-      </ChartCard>
+      </ChartSection>
 
       {/* Chart 5 */}
-      <ChartCard
+      <ChartSection
         title="Track Noise Ratio — Over Time"
         description="Ratio of confirmed flying birds to total detection candidates (0 to 1). A higher ratio means fewer false positives — the algorithm is confidently identifying real birds."
       >
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData.filter(d => d["Track Noise Ratio"] !== null)} margin={CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
             <XAxis dataKey="name" tick={<RotatedXTick />} interval={0}>
-              <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={12} fill="#64748b" />
+              <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={11} fill="var(--text-muted)" />
             </XAxis>
-            <YAxis tick={{ fontSize: 11 }} domain={[0, 1]}>
-              <Label value="Ratio (0 = all noise, 1 = all signal)" angle={-90} position="insideLeft" offset={10} dy={100} fontSize={11} fill="#64748b" />
+            <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} domain={[0, 1]}>
+              <Label value="Ratio (0 = noise, 1 = signal)" angle={-90} position="insideLeft" offset={10} dy={90} fontSize={11} fill="var(--text-muted)" />
             </YAxis>
-            <Tooltip formatter={(v) => [v?.toFixed(3), "Noise Ratio"]} />
-            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8 }} />
-            <Line type="monotone" dataKey="Track Noise Ratio" stroke="#d97706" strokeWidth={2.5} dot={{ r: 5 }} activeDot={{ r: 7 }} connectNulls />
+            <Tooltip formatter={(v) => [v?.toFixed(3), "Noise Ratio"]} contentStyle={{ borderRadius: 4, border: "1px solid var(--border)", fontSize: 12 }} />
+            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8, fontSize: 12 }} />
+            <Line type="monotone" dataKey="Track Noise Ratio" stroke="#d97706" strokeWidth={2.5} dot={{ r: 4, fill: "#d97706" }} activeDot={{ r: 6 }} connectNulls />
           </LineChart>
         </ResponsiveContainer>
-      </ChartCard>
+      </ChartSection>
 
       {/* Chart 6 */}
-      <ChartCard
+      <ChartSection
         title="Average Motion Score — Over Time"
-        description="Mean pixel displacement per frame across all detected bird regions (measured via optical flow). Higher values indicate faster-moving birds or stronger wind conditions."
+        description="Mean pixel displacement per frame across all detected bird regions (optical flow). Higher values indicate faster-moving birds or stronger wind conditions."
       >
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData.filter(d => d["Avg Motion (px/frame)"] !== null)} margin={CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
             <XAxis dataKey="name" tick={<RotatedXTick />} interval={0}>
-              <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={12} fill="#64748b" />
+              <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={11} fill="var(--text-muted)" />
             </XAxis>
-            <YAxis tick={{ fontSize: 11 }}>
-              <Label value="Pixels per frame (avg)" angle={-90} position="insideLeft" offset={10} dy={70} fontSize={12} fill="#64748b" />
+            <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }}>
+              <Label value="Pixels per frame (avg)" angle={-90} position="insideLeft" offset={10} dy={70} fontSize={11} fill="var(--text-muted)" />
             </YAxis>
-            <Tooltip formatter={(v) => [`${v?.toFixed(2)} px/frame`, "Avg Motion"]} />
-            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8 }} />
-            <Line type="monotone" dataKey="Avg Motion (px/frame)" stroke="#e11d48" strokeWidth={2.5} dot={{ r: 5 }} activeDot={{ r: 7 }} connectNulls />
+            <Tooltip formatter={(v) => [`${v?.toFixed(2)} px/frame`, "Avg Motion"]} contentStyle={{ borderRadius: 4, border: "1px solid var(--border)", fontSize: 12 }} />
+            <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8, fontSize: 12 }} />
+            <Line type="monotone" dataKey="Avg Motion (px/frame)" stroke="#e11d48" strokeWidth={2.5} dot={{ r: 4, fill: "#e11d48" }} activeDot={{ r: 6 }} connectNulls />
           </LineChart>
         </ResponsiveContainer>
-      </ChartCard>
+      </ChartSection>
     </div>
   );
 }
@@ -380,16 +376,19 @@ export default function Analysis() {
 
   return (
     <div className="page">
-      <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 6, color: "#1e293b" }}>Analysis</h1>
-      <p style={{ fontSize: 14, color: "#64748b", marginBottom: 24 }}>
-        Review bird detection results per location. Hover over column headers for metric explanations.
-      </p>
+      <div style={{ marginBottom: 28 }}>
+        <div className="page-eyebrow">Observation data</div>
+        <h1 className="page-title">Analysis</h1>
+        <p className="page-subtitle">
+          Review bird detection results per location. Hover column headers for metric explanations.
+        </p>
+      </div>
 
-      <div className="tab-bar">
+      <div className="tab-rail">
         {LOCATIONS.map((loc) => (
           <button
             key={loc}
-            className={`tab ${activeTab === loc ? "active" : ""}`}
+            className={`tab-item${activeTab === loc ? " active" : ""}`}
             onClick={() => setActiveTab(loc)}
           >
             Location {loc}

@@ -1,42 +1,45 @@
 import { useRef, useState } from "react";
 import { wsUrl } from "../api";
-import "../App.css";
 
 const LOCATIONS = ["A", "B", "C"];
-const CHUNK_SIZE = 1024 * 1024; // 1 MB
+const CHUNK_SIZE = 1024 * 1024;
 
 export default function Process() {
-  const [location, setLocation] = useState("A");
-  const [threshold, setThreshold] = useState(127);
-  const [file, setFile] = useState(null);
+  const [location,     setLocation]     = useState("A");
+  const [threshold,    setThreshold]    = useState(127);
+  const [file,         setFile]         = useState(null);
   const [recordedDate, setRecordedDate] = useState("");
   const [recordedTime, setRecordedTime] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | uploading | processing | done | error
-  const [progress, setProgress] = useState(0);
-  const [uniqueBirds, setUniqueBirds] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
-  const [result, setResult] = useState(null);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [status,       setStatus]       = useState("idle");
+  const [progress,     setProgress]     = useState(0);
+  const [uniqueBirds,  setUniqueBirds]  = useState(0);
+  const [elapsed,      setElapsed]      = useState(0);
+  const [result,       setResult]       = useState(null);
+  const [errorMsg,     setErrorMsg]     = useState("");
+  const [dragOver,     setDragOver]     = useState(false);
   const canvasRef = useRef(null);
-  const wsRef = useRef(null);
+  const wsRef     = useRef(null);
 
   function handleFileChange(e) {
-    setFile(e.target.files[0] || null);
-    setResult(null);
-    setStatus("idle");
-    setProgress(0);
-    setUniqueBirds(0);
-    setElapsed(0);
+    const f = e.target.files?.[0] || null;
+    setFile(f); setResult(null); setStatus("idle");
+    setProgress(0); setUniqueBirds(0); setElapsed(0);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault(); setDragOver(false);
+    const f = e.dataTransfer.files?.[0] || null;
+    if (f) { setFile(f); setResult(null); setStatus("idle"); setProgress(0); }
   }
 
   function drawFrame(bytes) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const blob = new Blob([bytes], { type: "image/jpeg" });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
+    const url  = URL.createObjectURL(blob);
+    const img  = new Image();
     img.onload = () => {
-      canvas.width = img.naturalWidth;
+      canvas.width  = img.naturalWidth;
       canvas.height = img.naturalHeight;
       canvas.getContext("2d").drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
@@ -46,77 +49,38 @@ export default function Process() {
 
   async function runDetection() {
     if (!file || !location) return;
-    setStatus("uploading");
-    setProgress(0);
-    setResult(null);
-    setErrorMsg("");
-
+    setStatus("uploading"); setProgress(0); setResult(null); setErrorMsg("");
     const token = localStorage.getItem("token") || "";
-    console.log("[runDetection] file:", file.name, "size:", (file.size / 1e6).toFixed(1), "MB",
-                "location:", location, "threshold:", threshold,
-                "token present:", !!token, "wsUrl:", wsUrl());
-
     const ws = new WebSocket(wsUrl());
     wsRef.current = ws;
     ws.binaryType = "arraybuffer";
 
-    console.log("[ws] opening connection to", wsUrl());
-
     ws.onopen = async () => {
-      console.log("[ws] connected");
-      // 1. Send metadata (include recorded_at if provided)
       const recorded_at = recordedDate && recordedTime
         ? `${recordedDate}T${recordedTime}`
         : recordedDate || undefined;
-      const meta = { token, location, filename: file.name, threshold, recorded_at };
-      console.log("[ws] sending metadata", meta);
-      ws.send(JSON.stringify(meta));
-
-      // 2. Stream video in chunks
+      ws.send(JSON.stringify({ token, location, filename: file.name, threshold, recorded_at }));
       setStatus("uploading");
       const buffer = await file.arrayBuffer();
-      console.log("[ws] video buffer size:", (buffer.byteLength / 1e6).toFixed(1), "MB");
       let offset = 0;
-      let chunkCount = 0;
       while (offset < buffer.byteLength) {
-        const chunk = buffer.slice(offset, offset + CHUNK_SIZE);
-        ws.send(chunk);
+        ws.send(buffer.slice(offset, offset + CHUNK_SIZE));
         offset += CHUNK_SIZE;
-        chunkCount++;
-        // small yield so the browser doesn't freeze on large files
-        await new Promise((r) => setTimeout(r, 0));
+        await new Promise(r => setTimeout(r, 0));
       }
-      console.log("[ws] upload done:", chunkCount, "chunks sent");
-
-      // 3. Signal done
       ws.send(JSON.stringify({ done: true }));
       setStatus("processing");
-      console.log("[ws] sent done signal, status → processing");
     };
 
     ws.onmessage = (event) => {
       if (event.data instanceof ArrayBuffer) {
-        // Annotated JPEG frame
-        console.log("[ws] frame received, bytes:", event.data.byteLength);
         drawFrame(event.data);
       } else {
         let msg;
-        try {
-          msg = JSON.parse(event.data);
-        } catch (e) {
-          console.error("[ws] failed to parse text message:", event.data);
-          return;
-        }
-        console.log("[ws] text message:", msg);
-        if (msg.error) {
-          console.error("[ws] server error:", msg.error);
-          setStatus("error");
-          setErrorMsg(msg.error);
-        } else if (msg.done) {
-          console.log("[ws] detection done, result:", msg);
-          setResult(msg);
-          setStatus("done");
-        } else if ("progress" in msg) {
+        try { msg = JSON.parse(event.data); } catch { return; }
+        if (msg.error) { setStatus("error"); setErrorMsg(msg.error); }
+        else if (msg.done) { setResult(msg); setStatus("done"); }
+        else if ("progress" in msg) {
           setProgress(msg.progress);
           setUniqueBirds(msg.unique_birds);
           setElapsed(msg.elapsed);
@@ -124,203 +88,227 @@ export default function Process() {
       }
     };
 
-    ws.onerror = (event) => {
-      console.error("[ws] WebSocket error event:", event);
-      setStatus("error");
-      setErrorMsg("Connection error. Please try again.");
-    };
-
-    ws.onclose = (event) => {
-      console.log("[ws] closed — code:", event.code, "reason:", event.reason, "wasClean:", event.wasClean);
-      if (status !== "done") setStatus((s) => (s === "processing" ? s : "idle"));
-    };
+    ws.onerror = () => { setStatus("error"); setErrorMsg("Connection error. Please try again."); };
+    ws.onclose = () => { if (status !== "done") setStatus(s => s === "processing" ? s : "idle"); };
   }
 
   const isRunning = status === "uploading" || status === "processing";
+  const pct = Math.round(progress * 100);
+  const thPct = ((threshold - 50) / 170 * 100).toFixed(1);
 
   return (
     <div className="page">
-      <h1 style={{ fontSize: 28, marginBottom: 24, color: "#1e293b" }}>
-        Process Video
-      </h1>
 
-      {/* Location picker */}
-      <div className="card">
-        <h2 style={{ fontSize: 17, marginBottom: 14, color: "#374151" }}>
-          Select Location
-        </h2>
-        <div style={{ display: "flex", gap: 10 }}>
-          {LOCATIONS.map((loc) => (
-            <button
-              key={loc}
-              onClick={() => setLocation(loc)}
-              disabled={isRunning}
-              className={`btn ${location === loc ? "btn-selected" : "btn-outline"}`}
-              style={{ minWidth: 72, fontSize: 17 }}
-            >
-              Location {loc}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Recording date & time */}
-      <div className="card">
-        <h2 style={{ fontSize: 17, marginBottom: 14, color: "#374151" }}>
-          Recording Date &amp; Time
-        </h2>
-        <p style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
-          Enter when the video was recorded. This is used as the X-axis label in the Analysis charts.
+      {/* Page header */}
+      <div style={{ marginBottom: 28 }}>
+        <div className="page-eyebrow">Detection pipeline</div>
+        <h1 className="page-title">Process a Recording</h1>
+        <p className="page-subtitle">
+          Configure the detection run, upload your field video, and watch annotated
+          frames stream back in real time.
         </p>
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Date</label>
-            <input
-              type="date"
-              value={recordedDate}
-              onChange={e => setRecordedDate(e.target.value)}
-              disabled={isRunning}
-              placeholder="YYYY-MM-DD"
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Time</label>
-            <input
-              type="time"
-              value={recordedTime}
-              onChange={e => setRecordedTime(e.target.value)}
-              disabled={isRunning}
-              placeholder="HH:MM"
-            />
-          </div>
-        </div>
       </div>
 
-      {/* Upload */}
-      <div className="card">
-        <h2 style={{ fontSize: 17, marginBottom: 14, color: "#374151" }}>
-          Upload Video
-        </h2>
-        <input
-          type="file"
-          accept=".mp4,.avi,.mov,.mkv,.webm"
-          onChange={handleFileChange}
-          disabled={isRunning}
-          style={{ marginBottom: 16, display: "block" }}
-        />
-        {file && (
-          <p style={{ color: "#64748b", fontSize: 14, marginBottom: 14 }}>
-            {file.name} — {(file.size / 1024 / 1024).toFixed(1)} MB
+      {/* ── Config row ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+
+        {/* Location */}
+        <div className="panel">
+          <div className="panel-label">Camera location</div>
+          <div className="location-grid">
+            {LOCATIONS.map(loc => (
+              <button
+                key={loc}
+                className={`loc-btn${location === loc ? " active" : ""}`}
+                onClick={() => setLocation(loc)}
+                disabled={isRunning}
+              >
+                <span className="loc-btn-id">{loc}</span>
+                <span className="loc-btn-label">Location</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Date & time */}
+        <div className="panel">
+          <div className="panel-label">Recording timestamp</div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <div className="form-row" style={{ flex: 1, marginBottom: 0 }}>
+              <label>Date</label>
+              <input type="date" value={recordedDate} onChange={e => setRecordedDate(e.target.value)} disabled={isRunning} />
+            </div>
+            <div className="form-row" style={{ flex: 1, marginBottom: 0 }}>
+              <label>Time</label>
+              <input type="time" value={recordedTime} onChange={e => setRecordedTime(e.target.value)} disabled={isRunning} />
+            </div>
+          </div>
+          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 10, lineHeight: 1.5 }}>
+            Used as the X-axis label in the Analysis charts.
           </p>
-        )}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 14, color: "#374151", display: "block", marginBottom: 6 }}>
-            Detection threshold: <strong>{threshold}</strong>
-            <span style={{ color: "#64748b", marginLeft: 8, fontSize: 12 }}>
-              (50–220 · lower = more sensitive, higher = less noise)
-            </span>
-          </label>
-          <input
-            type="range"
-            min={50}
-            max={220}
-            step={5}
-            value={threshold}
-            onChange={(e) => setThreshold(Number(e.target.value))}
-            disabled={isRunning}
-            style={{ width: "100%" }}
-          />
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={runDetection}
-          disabled={!file || isRunning}
-        >
-          {isRunning ? "Running…" : "Run Detection"}
-        </button>
       </div>
 
-      {/* Live stream + progress */}
-      {(isRunning || status === "done") && (
-        <div className="card">
-          <h2 style={{ fontSize: 17, marginBottom: 14, color: "#374151" }}>
-            {status === "done" ? "Detection Complete" : status === "uploading" ? "Uploading…" : "Detecting Birds (Live)"}
-          </h2>
+      {/* ── Threshold ── */}
+      <div className="panel" style={{ marginBottom: 16 }}>
+        <div className="panel-label">Detection sensitivity</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ flex: 1 }}>
+            <input
+              type="range" min={50} max={220} step={5}
+              value={threshold}
+              style={{ "--pct": `${thPct}%` }}
+              onChange={e => setThreshold(Number(e.target.value))}
+              disabled={isRunning}
+            />
+            <div className="threshold-labels">
+              <span>50 — highly sensitive</span>
+              <span>220 — minimal noise</span>
+            </div>
+          </div>
+          <div style={{
+            minWidth: 64, textAlign: "center",
+            fontFamily: "'DM Mono', monospace", fontSize: 22,
+            fontWeight: 500, color: "var(--forest)",
+            background: "var(--sage-light)", borderRadius: 5,
+            padding: "8px 12px",
+          }}>
+            {threshold}
+          </div>
+        </div>
+      </div>
 
-          <canvas
-            ref={canvasRef}
-            style={{
-              width: "100%",
-              border: "2px solid #e2e8f0",
-              borderRadius: 8,
-              background: "#0f172a",
-              display: "block",
-              minHeight: 200,
-            }}
-          />
-
-          {status === "processing" && (
+      {/* ── Upload ── */}
+      <div className="panel" style={{ marginBottom: 16 }}>
+        <div className="panel-label">Video file</div>
+        <div
+          className={`dropzone${dragOver ? " drag-over" : ""}`}
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+        >
+          <input type="file" accept=".mp4,.avi,.mov,.mkv,.webm" onChange={handleFileChange} disabled={isRunning} />
+          {file ? (
             <>
-              <div className="progress-bar-outer">
-                <div
-                  className="progress-bar-inner"
-                  style={{ width: `${Math.round(progress * 100)}%` }}
-                />
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 14, color: "#64748b" }}>
-                <span>{Math.round(progress * 100)}% complete</span>
-                <span>Unique birds so far: <strong>{uniqueBirds}</strong></span>
-                <span>Elapsed: {Math.floor(elapsed / 60)}m {Math.round(elapsed % 60)}s</span>
-              </div>
+              <span className="dropzone-icon">🎥</span>
+              <div className="dropzone-text">{file.name}</div>
+              <div className="dropzone-sub">{(file.size / 1024 / 1024).toFixed(1)} MB · Click or drag to replace</div>
             </>
+          ) : (
+            <>
+              <span className="dropzone-icon">↑</span>
+              <div className="dropzone-text">Drag a video here, or click to browse</div>
+              <div className="dropzone-sub">.mp4 · .avi · .mov · .mkv · .webm</div>
+            </>
+          )}
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <button
+            className="btn btn-primary"
+            onClick={runDetection}
+            disabled={!file || isRunning}
+            style={{ minWidth: 180 }}
+          >
+            {isRunning
+              ? (status === "uploading" ? "Uploading…" : "Detecting…")
+              : "Run detection"}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Live viewport ── */}
+      {(isRunning || status === "done") && (
+        <div className="panel" style={{ marginBottom: 16, padding: 0, overflow: "hidden" }}>
+          <div className="detection-viewport">
+            <canvas ref={canvasRef} />
+
+            {/* HUD bar */}
+            <div className="viewport-overlay-bar">
+              {status === "processing" && (
+                <span className="viewport-badge badge-live">Live Analysis</span>
+              )}
+              {status === "done" && (
+                <span className="viewport-badge badge-mono">Analysis complete</span>
+              )}
+              {status === "uploading" && (
+                <span className="viewport-badge badge-mono">Uploading…</span>
+              )}
+              <span className="viewport-badge badge-mono" style={{ marginLeft: "auto" }}>
+                Location {location}
+              </span>
+            </div>
+
+            {/* Empty state */}
+            {status === "uploading" && (
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em" }}>
+                  UPLOADING VIDEO
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Progress + stats */}
+          {status === "processing" && (
+            <div style={{ padding: "14px 20px" }}>
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${pct}%` }} />
+              </div>
+              <div className="progress-meta">
+                <span>{pct}% complete</span>
+                <span>{uniqueBirds} bird{uniqueBirds !== 1 ? "s" : ""} detected</span>
+                <span>{Math.floor(elapsed / 60)}m {Math.round(elapsed % 60)}s elapsed</span>
+              </div>
+            </div>
           )}
 
           {/* Legend */}
-          <div style={{ display: "flex", gap: 20, marginTop: 12, fontSize: 13, color: "#64748b" }}>
-            <span>
-              <span style={{ display: "inline-block", width: 12, height: 12, background: "#ffff00", border: "1px solid #ccc", marginRight: 5, verticalAlign: "middle" }} />
-              Candidate (unconfirmed)
-            </span>
-            <span>
-              <span style={{ display: "inline-block", width: 12, height: 12, background: "#ff0000", border: "1px solid #ccc", marginRight: 5, verticalAlign: "middle" }} />
-              Confirmed flying bird
-            </span>
+          <div style={{ padding: "0 20px 16px" }}>
+            <div className="legend">
+              <span>
+                <span className="legend-dot" style={{ background: "#facc15" }} />
+                Candidate — unconfirmed detection
+              </span>
+              <span>
+                <span className="legend-dot" style={{ background: "#ef4444" }} />
+                Confirmed flying bird
+              </span>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Result metrics */}
+      {/* ── Results ── */}
       {status === "done" && result && (
-        <div className="card">
-          <h2 style={{ fontSize: 17, marginBottom: 4, color: "#374151" }}>Results — Location {location}</h2>
-          <p style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Saved to GitHub automatically.</p>
-          <div className="metric-grid">
-            <div className="metric-card">
-              <div className="value">{result.unique_flying_birds}</div>
-              <div className="label">Unique Flying Birds</div>
-            </div>
-            <div className="metric-card">
-              <div className="value">{result.max_concurrent_birds}</div>
-              <div className="label">Max Concurrent</div>
-            </div>
-            <div className="metric-card">
-              <div className="value">{result.duration_seconds?.toFixed(0)}s</div>
-              <div className="label">Video Duration</div>
-            </div>
-            <div className="metric-card">
-              <div className="value">{result.processing_time?.toFixed(0)}s</div>
-              <div className="label">Processing Time</div>
-            </div>
+        <div className="panel" style={{ marginBottom: 0 }}>
+          <div className="panel-label">Session results — Location {location}</div>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
+            Saved to your account automatically.
+          </p>
+          <div className="metric-strip">
+            {[
+              { v: result.unique_flying_birds,           l: "Unique Flying Birds" },
+              { v: result.max_concurrent_birds,          l: "Peak Concurrent" },
+              { v: `${result.duration_seconds?.toFixed(0)}s`,  l: "Recording Duration" },
+              { v: `${result.processing_time?.toFixed(0)}s`,   l: "Processing Time" },
+            ].map(({ v, l }) => (
+              <div key={l} className="metric-cell">
+                <div className="metric-cell-value">{v}</div>
+                <div className="metric-cell-label">{l}</div>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Error */}
+      {/* ── Error ── */}
       {status === "error" && (
-        <div className="card">
-          <p className="error-msg">{errorMsg}</p>
+        <div className="error-banner" style={{ marginBottom: 0 }}>
+          {errorMsg}
         </div>
       )}
+
     </div>
   );
 }

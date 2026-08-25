@@ -1,310 +1,154 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import "../App.css";
+import heroImg from "../assets/hero.png";
 
-const GALLERY = [
+const SLIDES = [
   {
     src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8AIgtpQr1ngVvdFGZWJ0QwZpmoqx3ZBQJLPZjv6IoGRaZziUnmR3JlqkL&s=10",
-    alt: "Bird flock in field",
-    caption: "Field Observation Site",
-    sub: "Fixed-position cameras at each monitoring location",
+    title: "Field Observation Site",
+    sub: "Fixed-position cameras capture 30-minute recordings at each monitoring location",
   },
   {
     src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQkB58PJhdxMGHuH1tBjN3K9Q_naEqXtbnjFO58aNDjyUbGMkfX9Q1fiBNt&s=10",
-    alt: "Birds in flight",
-    caption: "Avian Movement Tracking",
-    sub: "Optical flow captures fast-moving bird trajectories",
+    title: "Avian Movement Tracking",
+    sub: "Optical flow captures directional coherence across consecutive frames",
   },
   {
     src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSr8U5GZts14UueWRvE5SOxRsWQJLi1-QbF_W7Dtkmesw&s",
-    alt: "Bird colony",
-    caption: "Colony Density Monitoring",
-    sub: "Count concurrent birds at peak activity moments",
+    title: "Colony Density Study",
+    sub: "Peak concurrent bird counts reveal population activity patterns",
   },
   {
     src: "https://media.licdn.com/dms/image/v2/C4E22AQGh3JeHpW1Sjg/feedshare-shrink_800/feedshare-shrink_800/0/1660321801209?e=2147483647&v=beta&t=kEY3HlgAVPYj0WHOFoUPa6VZwN1mMmXDn25CfoGd57Y",
-    alt: "Research team fieldwork",
-    caption: "Research Fieldwork",
-    sub: "Multi-location data collection across farm sites",
+    title: "Research Fieldwork",
+    sub: "Multi-location data collection across MSU farm sites",
   },
   {
     src: "https://cvm.msu.edu/assets/images/hospital/_imageFit650/anesthesia.jpg",
-    alt: "MSU CVM lab",
-    caption: "MSU CVM Laboratory",
-    sub: "Supporting avian influenza surveillance research",
-  },
-];
-
-const STATS = [
-  { value: "3", label: "Monitoring Locations" },
-  { value: "CV", label: "Computer Vision Engine" },
-  { value: "Real-time", label: "Live Detection Stream" },
-  { value: "Auto", label: "GitHub Data Storage" },
-];
-
-const QUICK_ACTIONS = [
-  {
-    to: "/app/process",
-    icon: "▶",
-    title: "Process a Video",
-    desc: "Upload a field recording and run automated bird detection with a live annotated frame preview.",
-    color: "#2563eb",
-    bg: "linear-gradient(135deg, #eff6ff, #dbeafe)",
-  },
-  {
-    to: "/app/analysis",
-    icon: "📊",
-    title: "View Analysis",
-    desc: "Explore bird count trends, detection latency, motion scores, and per-session metrics.",
-    color: "#059669",
-    bg: "linear-gradient(135deg, #ecfdf5, #d1fae5)",
+    title: "MSU CVM Laboratory",
+    sub: "Supporting avian influenza surveillance and biosurveillance research",
   },
 ];
 
 function Carousel() {
-  const [active, setActive] = useState(0);
+  const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
-  const timerRef = useRef(null);
-
-  const go = (idx) => setActive((idx + GALLERY.length) % GALLERY.length);
+  const n = SLIDES.length;
+  const go = (i) => setIdx((i + n) % n);
 
   useEffect(() => {
     if (paused) return;
-    timerRef.current = setInterval(() => setActive(a => (a + 1) % GALLERY.length), 4000);
-    return () => clearInterval(timerRef.current);
-  }, [paused]);
+    const t = setInterval(() => setIdx(i => (i + 1) % n), 4500);
+    return () => clearInterval(t);
+  }, [paused, n]);
 
   return (
     <div
-      style={{ position: "relative", borderRadius: 14, overflow: "hidden", background: "#0f172a", userSelect: "none" }}
+      className="carousel-root"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* Slides */}
-      <div style={{ position: "relative", height: 420 }}>
-        {GALLERY.map(({ src, alt, caption, sub }, i) => (
-          <div
-            key={i}
-            style={{
-              position: "absolute", inset: 0,
-              opacity: i === active ? 1 : 0,
-              transition: "opacity 0.8s ease",
-              pointerEvents: i === active ? "auto" : "none",
-            }}
-          >
-            <img
-              src={src}
-              alt={alt}
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-              onError={e => { e.currentTarget.style.opacity = 0; }}
-            />
-            {/* Gradient overlay */}
-            <div style={{
-              position: "absolute", inset: 0,
-              background: "linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)",
-            }} />
-            {/* Caption */}
-            <div style={{
-              position: "absolute", bottom: 56, left: 28, right: 80,
-              color: "#fff",
-              transform: i === active ? "translateY(0)" : "translateY(12px)",
-              opacity: i === active ? 1 : 0,
-              transition: "transform 0.6s ease 0.2s, opacity 0.6s ease 0.2s",
-            }}>
-              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{caption}</div>
-              <div style={{ fontSize: 13, color: "#cbd5e1" }}>{sub}</div>
-            </div>
+      {SLIDES.map(({ src, title, sub }, i) => (
+        <div key={i} className="carousel-slide" style={{ opacity: i === idx ? 1 : 0, pointerEvents: i === idx ? "auto" : "none" }}>
+          <img src={src} alt={title} onError={e => { e.currentTarget.style.opacity = 0; }} />
+          <div className="carousel-slide-overlay" />
+          <div className="carousel-caption" style={{
+            opacity: i === idx ? 1 : 0,
+            transform: i === idx ? "translateY(0)" : "translateY(10px)",
+          }}>
+            <div className="carousel-caption-title">{title}</div>
+            <div className="carousel-caption-sub">{sub}</div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
 
-      {/* Dot indicators */}
-      <div style={{
-        position: "absolute", bottom: 18, left: "50%", transform: "translateX(-50%)",
-        display: "flex", gap: 8,
-      }}>
-        {GALLERY.map((_, i) => (
+      {/* Arrows */}
+      <button className="carousel-arrow prev" onClick={() => go(idx - 1)}>‹</button>
+      <button className="carousel-arrow next" onClick={() => go(idx + 1)}>›</button>
+
+      {/* Dots */}
+      <div className="carousel-controls">
+        {SLIDES.map((_, i) => (
           <button
             key={i}
+            className={`carousel-dot${i === idx ? " active" : ""}`}
+            style={{ width: i === idx ? 24 : 8 }}
             onClick={() => go(i)}
             aria-label={`Slide ${i + 1}`}
-            style={{
-              width: i === active ? 24 : 8, height: 8,
-              borderRadius: 999, border: "none",
-              background: i === active ? "#fff" : "rgba(255,255,255,0.4)",
-              cursor: "pointer", padding: 0,
-              transition: "width 0.3s ease, background 0.3s ease",
-            }}
           />
         ))}
       </div>
-
-      {/* Prev / Next arrows */}
-      {[{ dir: -1, label: "‹", side: "left" }, { dir: 1, label: "›", side: "right" }].map(({ dir, label, side }) => (
-        <button
-          key={side}
-          onClick={() => go(active + dir)}
-          aria-label={dir === -1 ? "Previous" : "Next"}
-          style={{
-            position: "absolute", top: "50%", [side]: 14, transform: "translateY(-50%)",
-            background: "rgba(255,255,255,0.15)", backdropFilter: "blur(4px)",
-            border: "1px solid rgba(255,255,255,0.25)",
-            color: "#fff", borderRadius: "50%",
-            width: 38, height: 38, fontSize: 20, lineHeight: 1,
-            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "background 0.2s",
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.3)"}
-          onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
-        >
-          {label}
-        </button>
-      ))}
-
-      {/* Pause indicator */}
-      {paused && (
-        <div style={{
-          position: "absolute", top: 14, right: 14,
-          background: "rgba(0,0,0,0.5)", color: "#fff",
-          borderRadius: 6, padding: "3px 8px", fontSize: 11,
-        }}>
-          ⏸ Paused
-        </div>
-      )}
     </div>
   );
-}
-
-function CountUp({ target }) {
-  const [val, setVal] = useState(0);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const num = parseInt(target);
-    if (isNaN(num)) return;
-    let start = 0;
-    const step = Math.ceil(num / 30);
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= num) { setVal(num); clearInterval(timer); }
-      else setVal(start);
-    }, 40);
-    return () => clearInterval(timer);
-  }, [target]);
-
-  const num = parseInt(target);
-  return <span ref={ref}>{isNaN(num) ? target : val}</span>;
 }
 
 export default function Home() {
   const navigate = useNavigate();
 
   return (
-    <div className="page">
-
-      {/* Hero banner */}
-      <div className="hero-banner">
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#60a5fa", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
-            MSU CVM · Avian Research
-          </div>
-          <h1 className="hero-title">Bird Counter</h1>
-          <p style={{ color: "#94a3b8", fontSize: 15, maxWidth: 500, lineHeight: 1.7, margin: "0 0 28px" }}>
-            Automated avian detection powered by optical flow and multi-object tracking.
-            Upload field videos, get instant bird counts, explore trends over time.
-          </p>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <button className="btn btn-hero-primary" onClick={() => navigate("/app/process")}>
-              ▶ Process a Video
-            </button>
-            <button className="btn btn-hero-outline" onClick={() => navigate("/app/analysis")}>
-              View Analysis →
-            </button>
-          </div>
-        </div>
-        {/* Animated birds decoration */}
-        <div className="hero-birds" aria-hidden="true">
-          {["🐦","🐦","🐦","🐦","🐦"].map((b, i) => (
-            <span key={i} className={`bird bird-${i}`}>{b}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Stat bar */}
-      <div className="stat-bar">
-        {STATS.map(({ value, label }) => (
-          <div key={label} className="stat-item">
-            <div className="stat-value"><CountUp target={value} /></div>
-            <div className="stat-label">{label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Quick actions */}
-      <div style={{ display: "flex", gap: 20, marginBottom: 32, flexWrap: "wrap" }}>
-        {QUICK_ACTIONS.map(({ to, icon, title, desc, color, bg }) => (
-          <div
-            key={to}
-            onClick={() => navigate(to)}
-            className="action-card"
-            style={{ "--action-color": color, "--action-bg": bg }}
-          >
-            <div className="action-icon">{icon}</div>
-            <div style={{ fontWeight: 700, fontSize: 17, color: "#1e293b", marginBottom: 6 }}>{title}</div>
-            <div style={{ fontSize: 14, color: "#64748b", lineHeight: 1.6, flexGrow: 1 }}>{desc}</div>
-            <div style={{ marginTop: 16, color, fontWeight: 700, fontSize: 14 }}>Get started →</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Carousel */}
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "20px 24px 16px" }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", margin: 0 }}>Research Gallery</h2>
-          <p style={{ fontSize: 13, color: "#64748b", marginTop: 4, marginBottom: 0 }}>
-            Field sites and bird populations monitored by this platform. Hover to pause.
+    <div>
+      {/* ── Hero strip ── */}
+      <div className="home-hero">
+        <div className="home-hero-inner">
+          <div className="home-hero-eyebrow">MSU CVM · Avian Monitoring Platform</div>
+          <h1 className="home-hero-title">
+            Field Research <em>Station</em>
+          </h1>
+          <p className="home-hero-sub">
+            Upload field recordings, run automated detection, and track bird populations
+            across locations over time.
           </p>
         </div>
-        <Carousel />
       </div>
 
-      {/* How it works */}
-      <div className="card" style={{ marginTop: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>How It Works</h2>
-        <p style={{ fontSize: 13, color: "#64748b", marginBottom: 24 }}>Four steps from raw video to research-ready bird counts.</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-          {[
-            { n: 1, title: "Select a camera location", desc: "Choose Location A, B, or C — corresponding to the field camera that captured your video.", color: "#2563eb" },
-            { n: 2, title: "Enter recording date and time", desc: "Tell the system when the video was recorded. This timestamp becomes the X-axis label in your analysis charts.", color: "#0891b2" },
-            { n: 3, title: "Upload your video and run detection", desc: "Select a .mp4, .avi, or .mov file. Adjust detection sensitivity if needed, then click Run Detection to see annotated frames live.", color: "#7c3aed" },
-            { n: 4, title: "Explore your results in Analysis", desc: "Head to the Analysis page to see per-video metrics, trend charts, and estimated birds-per-hour across all sessions.", color: "#059669" },
-          ].map(({ n, title, desc, color }, idx, arr) => (
-            <div key={n} style={{ display: "flex", gap: 16, alignItems: "flex-start", paddingBottom: idx < arr.length - 1 ? 24 : 0, position: "relative" }}>
-              {/* Vertical line connector */}
-              {idx < arr.length - 1 && (
-                <div style={{
-                  position: "absolute", left: 17, top: 36, bottom: 0, width: 2,
-                  background: "linear-gradient(to bottom, #e2e8f0, transparent)",
-                }} />
-              )}
-              <div style={{
-                minWidth: 36, height: 36, borderRadius: "50%",
-                background: color, color: "#fff",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 700, fontSize: 15, flexShrink: 0, zIndex: 1,
-                boxShadow: `0 0 0 4px ${color}22`,
-              }}>
-                {n}
-              </div>
-              <div style={{ paddingTop: 4 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: "#1e293b", marginBottom: 3 }}>{title}</div>
-                <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>{desc}</div>
-              </div>
-            </div>
-          ))}
+      {/* ── Carousel ── */}
+      <Carousel />
+
+      {/* ── Action tiles ── */}
+      <div className="action-rail">
+        <div className="action-tile" onClick={() => navigate("/app/process")}>
+          <div className="action-tile-label">Start here</div>
+          <div className="action-tile-title">Process a Recording</div>
+          <div className="action-tile-desc">
+            Upload a field video, select a camera location, and run the detection
+            pipeline. Watch annotated frames stream back in real time.
+          </div>
+          <div className="action-tile-arrow">Open recorder →</div>
+        </div>
+
+        <div className="action-tile" onClick={() => navigate("/app/analysis")}>
+          <div className="action-tile-label">Your data</div>
+          <div className="action-tile-title">Explore Analysis</div>
+          <div className="action-tile-desc">
+            Review per-video metrics, compare trends across sessions, and see
+            estimated birds-per-hour rates for each monitoring location.
+          </div>
+          <div className="action-tile-arrow">View observations →</div>
         </div>
       </div>
 
+      {/* ── How it works ── */}
+      <div style={{ background: "var(--surface)", borderTop: "1px solid var(--border-light)" }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto", padding: "32px 28px 28px" }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 16 }}>
+            Detection workflow
+          </div>
+          <div className="workflow">
+            {[
+              { n: "Step 01", title: "Select location", desc: "Choose camera A, B, or C and enter the recording date and time." },
+              { n: "Step 02", title: "Upload video", desc: "Drag in your .mp4, .avi, or .mov file. The file streams to the server in 1 MB chunks." },
+              { n: "Step 03", title: "Live detection", desc: "Adaptive thresholding and optical flow run frame-by-frame. Watch confirmed birds appear in red boxes." },
+              { n: "Step 04", title: "Results saved", desc: "Unique count, peak concurrency, and motion metrics are saved automatically to your account." },
+            ].map(({ n, title, desc }) => (
+              <div key={n} className="workflow-step">
+                <div className="workflow-step-n">{n}</div>
+                <div className="workflow-step-title">{title}</div>
+                <div className="workflow-step-desc">{desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,188 +1,244 @@
 import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import heroImg from "../assets/hero.png";
 
-export default function Landing() {
+/* Simulated detections shown on the camera-frame mock */
+const DETECTIONS = [
+  { id: "B-04", x: "22%",  y: "28%", w: "11%", h: "14%", conf: 0.91, color: "#ef4444", trail: [{x:"20%",y:"32%"},{x:"19%",y:"31%"},{x:"21%",y:"29%"}] },
+  { id: "B-07", x: "54%",  y: "18%", w: "9%",  h: "11%", conf: 0.87, color: "#ef4444", trail: [{x:"50%",y:"22%"},{x:"52%",y:"20%"},{x:"53%",y:"18%"}] },
+  { id: "C-02", x: "70%",  y: "42%", w: "8%",  h: "10%", conf: 0.63, color: "#facc15", trail: [] },
+  { id: "B-11", x: "38%",  y: "55%", w: "10%", h: "13%", conf: 0.79, color: "#ef4444", trail: [{x:"35%",y:"58%"},{x:"36%",y:"56%"}] },
+];
+
+function CameraFrame() {
+  const [frame, setFrame] = useState(0);
+  const [ts, setTs]       = useState("08:14:32");
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setFrame(f => f + 1);
+      setTs(() => {
+        const now = new Date();
+        return `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", color: "#1e293b" }}>
-      {/* Top nav */}
-      <nav style={{
-        background: "#1e293b",
-        color: "#fff",
-        padding: "0 32px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        height: 56,
-      }}>
-        <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: -0.5 }}>Bird Counter</span>
-        <div style={{ display: "flex", gap: 16 }}>
-          <Link to="/login" style={{ color: "#cbd5e1", textDecoration: "none", fontSize: 14, fontWeight: 600 }}>
-            Log In
+    <div className="cam-frame">
+      <img src={heroImg} alt="Field camera feed" />
+
+      {/* Scanline sweep */}
+      <div className="cam-scanline" />
+
+      {/* Motion trails */}
+      {DETECTIONS.map(det => det.trail.map((pt, i) => (
+        <div key={`${det.id}-t${i}`} className="cam-trail" style={{
+          left: pt.x, top: pt.y,
+          width: 5 - i, height: 5 - i,
+          background: det.color,
+          opacity: 0.3 - i * 0.06,
+        }} />
+      )))}
+
+      {/* Bounding boxes */}
+      {DETECTIONS.map(det => (
+        <div key={det.id} className="cam-bbox" style={{
+          left: det.x, top: det.y, width: det.w, height: det.h,
+          borderColor: det.color,
+        }}>
+          <div className="cam-bbox-label" style={{ background: det.color, color: "#fff" }}>
+            {det.id} · {(det.conf * 100).toFixed(0)}%
+          </div>
+        </div>
+      ))}
+
+      {/* HUD top */}
+      <div className="cam-hud-top">
+        <span className="cam-badge cam-badge-rec">REC</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          <span className="cam-badge cam-badge-info">LOC A · FRAME {(frame % 9000) + 1200}</span>
+          <span className="cam-badge cam-badge-info">{ts}</span>
+        </div>
+      </div>
+
+      {/* HUD bottom */}
+      <div className="cam-hud-bottom">
+        <span className="cam-badge cam-badge-info">
+          {DETECTIONS.filter(d => d.color === "#ef4444").length} CONFIRMED · {DETECTIONS.filter(d => d.color === "#facc15").length} CANDIDATE
+        </span>
+        <span className="cam-badge cam-badge-info" style={{ color: "#86efac" }}>
+          ▶ LIVE ANALYSIS
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const GALLERY_ITEMS = [
+  {
+    src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8AIgtpQr1ngVvdFGZWJ0QwZpmoqx3ZBQJLPZjv6IoGRaZziUnmR3JlqkL&s=10",
+    caption: "Field Observation Site",
+  },
+  {
+    src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQkB58PJhdxMGHuH1tBjN3K9Q_naEqXtbnjFO58aNDjyUbGMkfX9Q1fiBNt&s=10",
+    caption: "Flock Movement Study",
+  },
+  {
+    src: "https://cvm.msu.edu/assets/images/hospital/_imageFit650/anesthesia.jpg",
+    caption: "MSU CVM Laboratory",
+  },
+];
+
+export default function Landing() {
+  const navRef = useRef(null);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (!navRef.current) return;
+      navRef.current.classList.toggle("scrolled", window.scrollY > 20);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <div className="landing-root">
+
+      {/* ── Navigation ── */}
+      <nav ref={navRef} className="landing-nav">
+        <span className="landing-brand">Bird<em> Counter</em></span>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <Link to="/login" style={{ fontSize: 13, color: "var(--text-secondary)", textDecoration: "none", fontWeight: 500 }}>
+            Sign in
           </Link>
-          <Link to="/login" style={{
-            background: "#2563eb", color: "#fff", textDecoration: "none",
-            padding: "6px 16px", borderRadius: 6, fontSize: 14, fontWeight: 600,
-          }}>
-            Get Started
+          <Link to="/login" className="cta-primary" style={{ padding: "9px 18px", fontSize: 13 }}>
+            Get access
           </Link>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section style={{
-        background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
-        color: "#fff",
-        padding: "72px 32px",
-        textAlign: "center",
-      }}>
-        <h1 style={{ fontSize: 48, fontWeight: 800, marginBottom: 20, letterSpacing: -1 }}>
-          Automated Bird Detection
-        </h1>
-        <p style={{ fontSize: 20, color: "#94a3b8", maxWidth: 640, margin: "0 auto 36px", lineHeight: 1.6 }}>
-          Bird Counter uses optical flow and multi-object tracking to automatically detect,
-          count, and analyze flying birds in field video recordings — giving researchers
-          fast, reproducible metrics without manual review.
-        </p>
-        <Link to="/login" style={{
-          background: "#2563eb", color: "#fff", textDecoration: "none",
-          padding: "14px 32px", borderRadius: 8, fontSize: 17, fontWeight: 700,
-          display: "inline-block",
-        }}>
-          Get Started →
-        </Link>
-      </section>
-
-      {/* Lab photos */}
-      <section style={{ padding: "60px 32px", background: "#f8fafc" }}>
-        <h2 style={{ fontSize: 28, fontWeight: 700, textAlign: "center", marginBottom: 8 }}>
-          Our Lab
-        </h2>
-        <p style={{ textAlign: "center", color: "#64748b", marginBottom: 36 }}>
-          Field cameras and research infrastructure used to collect bird activity data.
-        </p>
-        <div style={{ display: "flex", gap: 24, justifyContent: "center", flexWrap: "wrap", maxWidth: 960, margin: "0 auto" }}>
-          <div style={{
-            flex: "1 1 280px", maxWidth: 380, borderRadius: 12,
-            overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-            background: "#fff",
-          }}>
-            <img
-              src={heroImg}
-              alt="Research site"
-              style={{ width: "100%", height: 220, objectFit: "cover", display: "block" }}
-            />
-            <div style={{ padding: "16px 20px" }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Field Camera Setup</div>
-              <div style={{ fontSize: 13, color: "#64748b" }}>
-                Fixed-position cameras capture 30-minute recordings at each monitoring location.
-              </div>
-            </div>
+      {/* ── Hero ── */}
+      <section className="hero">
+        {/* Left: copy */}
+        <div style={{ animation: "fadeUp 0.7s ease both" }}>
+          <div className="hero-eyebrow">Avian Monitoring · Computer Vision</div>
+          <h1 className="hero-h1">
+            See what the<br />
+            field camera <em>sees.</em>
+          </h1>
+          <p className="hero-p">
+            Automatically detect, count, and track flying birds across field recordings
+            using optical flow and multi-object tracking — giving researchers fast,
+            reproducible metrics without manual review.
+          </p>
+          <div className="hero-ctas">
+            <Link to="/login" className="cta-primary">
+              Process a recording
+              <span style={{ fontSize: 16 }}>→</span>
+            </Link>
+            <Link to="/login" className="cta-secondary">
+              Explore observations
+            </Link>
           </div>
 
-          <div style={{
-            flex: "1 1 280px", maxWidth: 380, borderRadius: 12,
-            overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-            background: "#fff",
-          }}>
-            <div style={{
-              width: "100%", height: 220, background: "linear-gradient(135deg, #0f172a, #1e3a5f)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <span style={{ fontSize: 64 }}>🐦</span>
-            </div>
-            <div style={{ padding: "16px 20px" }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Detection Overlay</div>
-              <div style={{ fontSize: 13, color: "#64748b" }}>
-                Real-time bounding boxes mark candidate and confirmed flying birds frame by frame.
+          {/* Tiny proof points */}
+          <div style={{ display: "flex", gap: 24, marginTop: 36, flexWrap: "wrap" }}>
+            {[
+              ["Optical flow", "motion detection"],
+              ["Multi-object", "tracking"],
+              ["Per-user", "data isolation"],
+            ].map(([top, bot]) => (
+              <div key={top} style={{ borderLeft: "2px solid var(--sage-mid)", paddingLeft: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--charcoal)" }}>{top}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>{bot}</div>
               </div>
-            </div>
+            ))}
           </div>
+        </div>
 
+        {/* Right: camera frame */}
+        <div className="hero-visual">
+          <CameraFrame />
+          {/* Corner decoration */}
           <div style={{
-            flex: "1 1 280px", maxWidth: 380, borderRadius: 12,
-            overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-            background: "#fff",
-          }}>
-            <div style={{
-              width: "100%", height: 220, background: "linear-gradient(135deg, #064e3b, #065f46)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <span style={{ fontSize: 64 }}>📊</span>
-            </div>
-            <div style={{ padding: "16px 20px" }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Analytics Dashboard</div>
-              <div style={{ fontSize: 13, color: "#64748b" }}>
-                Trends across sessions: birds per hour, detection latency, motion scores, and more.
-              </div>
-            </div>
-          </div>
+            position: "absolute", bottom: -14, right: -14,
+            width: 100, height: 100,
+            border: "1px solid var(--sage-mid)",
+            borderRadius: 4, zIndex: -1, opacity: 0.4,
+          }} />
         </div>
       </section>
 
-      {/* Tutorial */}
-      <section style={{ padding: "60px 32px", maxWidth: 760, margin: "0 auto" }}>
-        <h2 style={{ fontSize: 28, fontWeight: 700, textAlign: "center", marginBottom: 8 }}>
-          How It Works
-        </h2>
-        <p style={{ textAlign: "center", color: "#64748b", marginBottom: 44 }}>
-          Four steps from raw video to research-ready bird counts.
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {[
-            {
-              step: 1,
-              title: "Log in to your account",
-              desc: "Create an account or sign in to access the detection tools and your saved results.",
-            },
-            {
-              step: 2,
-              title: "Upload your video",
-              desc: "On the Process page, choose a camera location (A, B, or C), enter the date and time the video was recorded, then upload your .mp4, .avi, or .mov file.",
-            },
-            {
-              step: 3,
-              title: "Run detection and watch live",
-              desc: "Click Run Detection to start. Bird candidates appear in yellow boxes; confirmed flying birds appear in red. A live progress bar tracks completion.",
-            },
-            {
-              step: 4,
-              title: "Explore analytics",
-              desc: "Go to the Analysis page to review per-video metrics, compare trends over time, and see estimated birds-per-hour rates across all your sessions.",
-            },
-          ].map(({ step, title, desc }) => (
-            <div key={step} style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-              <div style={{
-                minWidth: 44, height: 44, borderRadius: "50%",
-                background: "#2563eb", color: "#fff",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18, fontWeight: 700, flexShrink: 0,
-              }}>
-                {step}
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 4 }}>{title}</div>
-                <div style={{ color: "#64748b", fontSize: 15, lineHeight: 1.6 }}>{desc}</div>
-              </div>
+      {/* ── Gallery ── */}
+      <section style={{ background: "var(--charcoal)", padding: "0" }}>
+        <div className="gallery-strip">
+          {GALLERY_ITEMS.map(({ src, caption }) => (
+            <div key={caption} className="gallery-item">
+              <img src={src} alt={caption}
+                onError={e => { e.currentTarget.style.opacity = 0; }}
+              />
+              <div className="gallery-item-cap">{caption}</div>
             </div>
           ))}
         </div>
-        <div style={{ textAlign: "center", marginTop: 48 }}>
-          <Link to="/login" style={{
-            background: "#2563eb", color: "#fff", textDecoration: "none",
-            padding: "14px 36px", borderRadius: 8, fontSize: 16, fontWeight: 700,
-            display: "inline-block",
-          }}>
-            Start Analyzing →
-          </Link>
+      </section>
+
+      {/* ── Method ── */}
+      <section className="landing-section">
+        <div className="section-eyebrow">Detection pipeline</div>
+        <h2 className="section-title">
+          Observe. Detect.<br />Understand.
+        </h2>
+        <p className="section-body">
+          Each recording passes through a classical computer vision pipeline optimised
+          for field conditions — variable lighting, fast-moving subjects, and cluttered
+          sky backgrounds.
+        </p>
+
+        <div className="steps">
+          {[
+            { n: "01", title: "Upload recording", desc: "Select the camera location and upload your .mp4, .avi, or .mov file. Date and time metadata are recorded for longitudinal analysis." },
+            { n: "02", title: "Adaptive threshold", desc: "Gaussian adaptive thresholding separates birds from sky regardless of overcast or bright conditions." },
+            { n: "03", title: "Optical flow tracking", desc: "Farneback optical flow computes per-pixel motion vectors. Birds are confirmed by directional coherence across frames." },
+            { n: "04", title: "Metrics & storage", desc: "Results — unique birds, peak concurrency, motion scores — are saved per user and location for longitudinal trend analysis." },
+          ].map(({ n, title, desc }) => (
+            <div key={n} className="step">
+              <div className="step-num">{n}</div>
+              <div className="step-title">{title}</div>
+              <div className="step-desc">{desc}</div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer style={{
-        background: "#1e293b", color: "#64748b",
-        textAlign: "center", padding: "24px 32px", fontSize: 13,
+      {/* ── CTA band ── */}
+      <section style={{
+        background: "var(--forest-deep)",
+        padding: "64px 40px",
+        textAlign: "center",
       }}>
-        Bird Counter — Automated avian detection research tool
+        <div style={{
+          fontFamily: "'DM Serif Display', Georgia, serif",
+          fontSize: 30,
+          color: "#fff",
+          marginBottom: 14,
+          letterSpacing: -0.5,
+        }}>
+          Ready to analyse your recordings?
+        </div>
+        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 28 }}>
+          Request access and start processing field videos in minutes.
+        </p>
+        <Link to="/login" className="cta-primary">
+          Create an account →
+        </Link>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer className="landing-footer">
+        Bird Counter · MSU College of Veterinary Medicine · Avian influenza surveillance research
       </footer>
     </div>
   );
