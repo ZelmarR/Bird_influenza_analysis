@@ -14,13 +14,21 @@ export default function Login() {
   const [loading, setLoading]         = useState(false);
   const navigate = useNavigate();
 
+  function switchMode(m) {
+    setMode(m);
+    setError("");
+    setEmail("");
+    setPassword("");
+    setName("");
+    setDepartment("");
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(""); setLoading(true);
     try {
       if (mode === "register") {
         await register(email, password, name, department);
-        await login(email, password);
       } else {
         await login(email, password);
       }
@@ -69,7 +77,7 @@ export default function Login() {
               <button
                 key={m}
                 className={`mode-btn${mode === m ? " active" : ""}`}
-                onClick={() => { setMode(m); setError(""); }}
+                onClick={() => switchMode(m)}
               >
                 {m === "login" ? "Sign in" : "Create account"}
               </button>

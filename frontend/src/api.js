@@ -36,9 +36,12 @@ export async function register(email, password, name = "", department = "") {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, name, department }),
   });
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
     throw new Error(data.detail || "Registration failed");
+  }
+  if (data.access_token) {
+    localStorage.setItem("token", data.access_token);
   }
 }
 

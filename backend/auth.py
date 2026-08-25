@@ -69,7 +69,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_
 def register(req: RegisterRequest):
     df, sha = download_users()
     if not df.empty and req.email in df["email"].values:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="An account with this email already exists.")
 
     new_row = pd.DataFrame([{
         "id": str(uuid.uuid4()),
@@ -81,7 +81,8 @@ def register(req: RegisterRequest):
     }])
     df = pd.concat([df, new_row], ignore_index=True)
     upload_users(df, sha)
-    return {"message": "Account created"}
+    token = _create_token(req.email)
+    return {"message": "Account created", "access_token": token, "token_type": "bearer"}
 
 
 @router.post("/login")
