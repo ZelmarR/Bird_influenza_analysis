@@ -15,8 +15,12 @@ if _missing:
     raise RuntimeError(f"Missing required environment variables: {', '.join(_missing)}")
 
 import cv2
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from auth import router as auth_router, get_current_user
 from detection import process_video_streaming
@@ -36,7 +40,11 @@ ALLOWED_ORIGINS = os.environ.get(
     "http://localhost:5173,http://localhost:3000",
 ).split(",")
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Bird Counter API")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,7 +63,8 @@ def health():
 
 
 @app.get("/results/{location}")
-def get_results(location: Location, user: str = Depends(get_current_user)):
+@limiter.limit("30/minute")
+def get_results(request: Request, location: Location, user: str = Depends(get_current_user)):
     df, _ = download_csv(location, user_email=user)
     records = df.to_dict(orient="records")
     return [{k: (None if isinstance(v, float) and v != v else v) for k, v in row.items()} for row in records]

@@ -89,11 +89,11 @@ export default function Login() {
               <>
                 <div className="form-field">
                   <label>Full name</label>
-                  <input type="text" required value={name} onChange={e => setName(e.target.value)} placeholder="Dr. Jane Smith" />
+                  <input type="text" required value={name} onChange={e => setName(e.target.value)} placeholder="Name" />
                 </div>
                 <div className="form-field">
                   <label>Department</label>
-                  <input type="text" required value={department} onChange={e => setDepartment(e.target.value)} placeholder="Pathobiology & Diagnostic Investigation" />
+                  <input type="text" required value={department} onChange={e => setDepartment(e.target.value)} placeholder="Epidemiology, etc" />
                 </div>
               </>
             )}

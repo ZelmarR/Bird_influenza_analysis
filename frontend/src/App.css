@@ -1055,12 +1055,23 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
   background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236b7f6e' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 
-.home-hero-inner {
-  max-width: 1040px;
+.home-hero-split {
+  max-width: 1100px;
   margin: 0 auto;
   position: relative;
   z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: start;
 }
+
+@media (max-width: 860px) {
+  .home-hero-split { grid-template-columns: 1fr; }
+  .home-hero-video-wrap { order: -1; }
+}
+
+.home-hero-text { display: flex; flex-direction: column; gap: 0; }
 
 .home-hero-eyebrow {
   font-size: 10px;
@@ -1086,8 +1097,63 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
 .home-hero-sub {
   font-size: 14px;
   color: rgba(255,255,255,0.5);
-  max-width: 480px;
   line-height: 1.65;
+  margin-bottom: 18px;
+}
+
+.home-hero-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home-hero-bullets li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 14px;
+  border-left: 2px solid var(--sage-mid);
+}
+
+.home-hero-bullets .bullet-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  letter-spacing: 0.02em;
+}
+
+.home-hero-bullets .bullet-desc {
+  font-size: 12px;
+  color: rgba(255,255,255,0.42);
+  line-height: 1.55;
+}
+
+.home-hero-video-wrap {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+}
+
+.home-hero-video {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+}
+
+.home-hero-video-label {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
 }
 
 /* Carousel */
@@ -1237,6 +1303,11 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
   margin-top: 8px;
 }
 
+.workflow.workflow-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 900px) { .workflow.workflow-5 { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 700px) { .workflow { grid-template-columns: 1fr 1fr; } }
 
 .workflow-step {

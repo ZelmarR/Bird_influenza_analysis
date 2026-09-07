@@ -6,7 +6,6 @@ const CHUNK_SIZE = 1024 * 1024;
 
 export default function Process() {
   const [location,     setLocation]     = useState("A");
-  const [threshold,    setThreshold]    = useState(127);
   const [file,         setFile]         = useState(null);
   const [recordedDate, setRecordedDate] = useState("");
   const [recordedTime, setRecordedTime] = useState("");
@@ -56,10 +55,11 @@ export default function Process() {
     ws.binaryType = "arraybuffer";
 
     ws.onopen = async () => {
+      // build recorded_at from whatever the user entered; never fall back to upload time
       const recorded_at = recordedDate && recordedTime
-        ? `${recordedDate}T${recordedTime}`
-        : recordedDate || undefined;
-      ws.send(JSON.stringify({ token, location, filename: file.name, threshold, recorded_at }));
+        ? `${recordedDate} ${recordedTime}`
+        : recordedDate || null;
+      ws.send(JSON.stringify({ token, location, filename: file.name, threshold: THRESHOLD, recorded_at }));
       setStatus("uploading");
       const buffer = await file.arrayBuffer();
       let offset = 0;
@@ -92,9 +92,9 @@ export default function Process() {
     ws.onclose = () => { if (status !== "done") setStatus(s => s === "processing" ? s : "idle"); };
   }
 
+  const THRESHOLD = 127;
   const isRunning = status === "uploading" || status === "processing";
   const pct = Math.round(progress * 100);
-  const thPct = ((threshold - 50) / 170 * 100).toFixed(1);
 
   return (
     <div className="page">
@@ -146,35 +146,6 @@ export default function Process() {
           <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 10, lineHeight: 1.5 }}>
             Used as the X-axis label in the Analysis charts.
           </p>
-        </div>
-      </div>
-
-      {/* ── Threshold ── */}
-      <div className="panel" style={{ marginBottom: 16 }}>
-        <div className="panel-label">Detection sensitivity</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ flex: 1 }}>
-            <input
-              type="range" min={50} max={220} step={5}
-              value={threshold}
-              style={{ "--pct": `${thPct}%` }}
-              onChange={e => setThreshold(Number(e.target.value))}
-              disabled={isRunning}
-            />
-            <div className="threshold-labels">
-              <span>50 — highly sensitive</span>
-              <span>220 — minimal noise</span>
-            </div>
-          </div>
-          <div style={{
-            minWidth: 64, textAlign: "center",
-            fontFamily: "'DM Mono', monospace", fontSize: 22,
-            fontWeight: 500, color: "var(--forest)",
-            background: "var(--sage-light)", borderRadius: 5,
-            padding: "8px 12px",
-          }}>
-            {threshold}
-          </div>
         </div>
       </div>
 

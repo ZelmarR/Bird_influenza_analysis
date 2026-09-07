@@ -1,108 +1,63 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
-import heroImg from "../assets/hero.png";
-
-const SLIDES = [
-  {
-    src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8AIgtpQr1ngVvdFGZWJ0QwZpmoqx3ZBQJLPZjv6IoGRaZziUnmR3JlqkL&s=10",
-    title: "Field Observation Site",
-    sub: "Fixed-position cameras capture 30-minute recordings at each monitoring location",
-  },
-  {
-    src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQkB58PJhdxMGHuH1tBjN3K9Q_naEqXtbnjFO58aNDjyUbGMkfX9Q1fiBNt&s=10",
-    title: "Avian Movement Tracking",
-    sub: "Optical flow captures directional coherence across consecutive frames",
-  },
-  {
-    src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSr8U5GZts14UueWRvE5SOxRsWQJLi1-QbF_W7Dtkmesw&s",
-    title: "Colony Density Study",
-    sub: "Peak concurrent bird counts reveal population activity patterns",
-  },
-  {
-    src: "https://media.licdn.com/dms/image/v2/C4E22AQGh3JeHpW1Sjg/feedshare-shrink_800/feedshare-shrink_800/0/1660321801209?e=2147483647&v=beta&t=kEY3HlgAVPYj0WHOFoUPa6VZwN1mMmXDn25CfoGd57Y",
-    title: "Research Fieldwork",
-    sub: "Multi-location data collection across MSU farm sites",
-  },
-  {
-    src: "https://cvm.msu.edu/assets/images/hospital/_imageFit650/anesthesia.jpg",
-    title: "MSU CVM Laboratory",
-    sub: "Supporting avian influenza surveillance and biosurveillance research",
-  },
-];
-
-function Carousel() {
-  const [idx, setIdx] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const n = SLIDES.length;
-  const go = (i) => setIdx((i + n) % n);
-
-  useEffect(() => {
-    if (paused) return;
-    const t = setInterval(() => setIdx(i => (i + 1) % n), 4500);
-    return () => clearInterval(t);
-  }, [paused, n]);
-
-  return (
-    <div
-      className="carousel-root"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      {SLIDES.map(({ src, title, sub }, i) => (
-        <div key={i} className="carousel-slide" style={{ opacity: i === idx ? 1 : 0, pointerEvents: i === idx ? "auto" : "none" }}>
-          <img src={src} alt={title} onError={e => { e.currentTarget.style.opacity = 0; }} />
-          <div className="carousel-slide-overlay" />
-          <div className="carousel-caption" style={{
-            opacity: i === idx ? 1 : 0,
-            transform: i === idx ? "translateY(0)" : "translateY(10px)",
-          }}>
-            <div className="carousel-caption-title">{title}</div>
-            <div className="carousel-caption-sub">{sub}</div>
-          </div>
-        </div>
-      ))}
-
-      {/* Arrows */}
-      <button className="carousel-arrow prev" onClick={() => go(idx - 1)}>‹</button>
-      <button className="carousel-arrow next" onClick={() => go(idx + 1)}>›</button>
-
-      {/* Dots */}
-      <div className="carousel-controls">
-        {SLIDES.map((_, i) => (
-          <button
-            key={i}
-            className={`carousel-dot${i === idx ? " active" : ""}`}
-            style={{ width: i === idx ? 24 : 8 }}
-            onClick={() => go(i)}
-            aria-label={`Slide ${i + 1}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function Home() {
   const navigate = useNavigate();
 
   return (
     <div>
-      {/* ── Hero strip ── */}
+      {/* ── Hero strip with side video ── */}
       <div className="home-hero">
-        <div className="home-hero-inner">
-          <div className="home-hero-eyebrow">MSU CVM · Avian Monitoring Platform</div>
-          <h1 className="home-hero-title">
-            Field Research <em>Station</em>
-          </h1>
-          <p className="home-hero-sub">
-            Upload field recordings, run automated detection, and track bird populations
-            across locations over time.
-          </p>
+        <div className="home-hero-split">
+          {/* Left: text */}
+          <div className="home-hero-text">
+            <div className="home-hero-eyebrow">MSU CVM · Wild bird monitoring system</div>
+            <h1 className="home-hero-title">
+              Field Research <em>Station</em>
+            </h1>
+            <p className="home-hero-sub" style={{ maxWidth: "100%" }}>
+              Record videos periodically and process them to analyse bird activity patterns over time.
+              <b style={{ display: "block", marginTop: 10, color: "rgba(255,255,255,0.55)", fontWeight: 500, fontSize: 12 }}>
+                Note: This tool measures activity patterns — not an exact bird census.
+              </b>
+            </p>
+            <ul className="home-hero-bullets">
+              <li>
+                <span className="bullet-label">Birds per unit time</span>
+                <span className="bullet-desc">Estimated hourly bird activity rate, derived from per-minute counts averaged across 5-minute windows and extrapolated to an hour.</span>
+              </li>
+              <li>
+                <span className="bullet-label">Max concurrent birds</span>
+                <span className="bullet-desc">The highest number of birds observed simultaneously within a single video frame — a proxy for peak flock density at the site.</span>
+              </li>
+              <li>
+                <span className="bullet-label">First detection latency</span>
+                <span className="bullet-desc">Seconds from the start of the recording until the first confirmed flying bird appears. Shorter latency suggests active sites or well-placed cameras.</span>
+              </li>
+              <li>
+                <span className="bullet-label">Track noise ratio</span>
+                <span className="bullet-desc">Ratio of confirmed flying birds to total motion candidates (0 – 1). Values closer to 1.0 indicate a cleaner signal with fewer false positives from wind, foliage, or insects.</span>
+              </li>
+              <li>
+                <span className="bullet-label">Average motion score</span>
+                <span className="bullet-desc">Mean pixel displacement per frame across all detected bird regions via optical flow. Higher values reflect faster-moving birds or stronger environmental movement.</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Right: demo video */}
+          <div className="home-hero-video-wrap">
+            <video
+              className="home-hero-video"
+              src="/demo.mov"
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+            <div className="home-hero-video-label">Live detection preview</div>
+          </div>
         </div>
       </div>
-
-      {/* ── Carousel ── */}
-      <Carousel />
 
       {/* ── Action tiles ── */}
       <div className="action-rail">
@@ -133,12 +88,33 @@ export default function Home() {
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 16 }}>
             Detection workflow
           </div>
-          <div className="workflow">
+          <div className="workflow workflow-5">
             {[
-              { n: "Step 01", title: "Select location", desc: "Choose camera A, B, or C and enter the recording date and time." },
-              { n: "Step 02", title: "Upload video", desc: "Drag in your .mp4, .avi, or .mov file. The file streams to the server in 1 MB chunks." },
-              { n: "Step 03", title: "Live detection", desc: "Adaptive thresholding and optical flow run frame-by-frame. Watch confirmed birds appear in red boxes." },
-              { n: "Step 04", title: "Results saved", desc: "Unique count, peak concurrency, and motion metrics are saved automatically to your account." },
+              {
+                n: "Step 01",
+                title: "Record the video",
+                desc: "Position the camera at the fixed monitoring site. Record a continuous .mp4, .avi, or .mov clip — 10–30 minutes is ideal. Ensure the sky and bird flight path are clearly in frame and the camera is stable.",
+              },
+              {
+                n: "Step 02",
+                title: "Select location",
+                desc: "On the Process page, choose which camera site you recorded at — Location A, B, or C — and enter the exact date and start time of the recording.",
+              },
+              {
+                n: "Step 03",
+                title: "Upload video",
+                desc: "Drag your video file into the upload area or click to browse. The file is streamed to the server in 1 MB chunks so large files upload reliably on slow connections.",
+              },
+              {
+                n: "Step 04",
+                title: "Live detection",
+                desc: "Adaptive thresholding and optical flow run frame-by-frame on the server. Annotated frames stream back in real time — confirmed flying birds appear highlighted in red bounding boxes.",
+              },
+              {
+                n: "Step 05",
+                title: "Results saved",
+                desc: "Once processing completes, unique bird count, peak concurrency, first detection latency, noise ratio, and motion score are saved automatically to your account under the correct location.",
+              },
             ].map(({ n, title, desc }) => (
               <div key={n} className="workflow-step">
                 <div className="workflow-step-n">{n}</div>

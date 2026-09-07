@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  LineChart, Line, BarChart, Bar,
+  LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label,
 } from "recharts";
 import { fetchResults } from "../api";
@@ -135,7 +135,12 @@ function LocationTab({ location }) {
     </div>
   );
 
-  const label = (r, i) => r.recorded_at || r.upload_date || `Video ${i + 1}`;
+  const label = (r, i) => {
+    if (r.recorded_at) return r.recorded_at;
+    // recorded_at was not entered — show upload date with a marker so it's obvious
+    if (r.upload_date) return `${r.upload_date} (uploaded)`;
+    return `Video ${i + 1}`;
+  };
 
   const chartData = rows.map((r, i) => ({
     name: label(r, i),
@@ -220,7 +225,7 @@ function LocationTab({ location }) {
                   <td style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.video_name}>
                     {r.video_name}
                   </td>
-                  <td style={{ whiteSpace: "nowrap" }}>{r.recorded_at || r.upload_date || "—"}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{r.recorded_at || `${r.upload_date} (uploaded)` || "—"}</td>
                   <td style={{ fontFamily: "'DM Mono', monospace", fontWeight: 600, color: "var(--forest)" }}>{r.unique_flying_birds}</td>
                   <td style={{ fontFamily: "'DM Mono', monospace" }}>{r.max_concurrent_birds}</td>
                   <td style={{ fontFamily: "'DM Mono', monospace" }}>{fmt(r.duration_seconds, 0)}</td>
@@ -289,7 +294,7 @@ function LocationTab({ location }) {
           </p>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={bphData} margin={CHART_MARGIN}>
+            <LineChart data={bphData} margin={CHART_MARGIN}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
               <XAxis dataKey="name" tick={<RotatedXTick />} interval={0}>
                 <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={11} fill="var(--text-muted)" />
@@ -299,8 +304,8 @@ function LocationTab({ location }) {
               </YAxis>
               <Tooltip formatter={(v) => [`${v} birds/hr`, "Estimated Rate"]} contentStyle={{ borderRadius: 4, border: "1px solid var(--border)", fontSize: 12 }} />
               <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8, fontSize: 12 }} />
-              <Bar dataKey="Birds / Hour" fill="var(--forest)" radius={[3, 3, 0, 0]} />
-            </BarChart>
+              <Line type="monotone" dataKey="Birds / Hour" stroke="var(--forest)" strokeWidth={2.5} dot={{ r: 4, fill: "var(--forest)" }} activeDot={{ r: 6 }} connectNulls />
+            </LineChart>
           </ResponsiveContainer>
         )}
       </ChartSection>
