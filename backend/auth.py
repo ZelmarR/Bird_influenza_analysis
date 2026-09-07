@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -45,7 +45,7 @@ def _verify(password: str, hashed: str) -> bool:
 
 
 def _create_token(email: str) -> str:
-    expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS)
+    expire = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS)
     return jwt.encode({"sub": email, "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
@@ -77,7 +77,7 @@ def register(req: RegisterRequest):
         "name": req.name,
         "department": req.department,
         "password_hash": _hash(req.password),
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }])
     df = pd.concat([df, new_row], ignore_index=True)
     upload_users(df, sha)
