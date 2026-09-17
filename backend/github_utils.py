@@ -105,6 +105,29 @@ def upload_csv(df: pd.DataFrame, sha: str | None, location: str, user_email: str
     _commit_file(path, df.to_csv(index=False), sha, f"Update results for location {location} ({slug})")
 
 
+# ── Locations (per user) ─────────────────────────────────────────────────────
+
+def download_locations(user_email: str = "") -> tuple[list[str], str | None]:
+    """Return (locations_list, sha) for the user's locations.json."""
+    import json as _json
+    slug = _user_slug(user_email) if user_email else "shared"
+    path = f"results/{slug}/locations.json"
+    content, sha = _fetch_file(path)
+    if not content:
+        return [], None
+    try:
+        return _json.loads(content), sha
+    except Exception:
+        return [], sha
+
+
+def upload_locations(locations: list[str], sha: str | None, user_email: str = "") -> None:
+    import json as _json
+    slug = _user_slug(user_email) if user_email else "shared"
+    path = f"results/{slug}/locations.json"
+    _commit_file(path, _json.dumps(locations), sha, f"Update locations for {slug}")
+
+
 # ── Users ─────────────────────────────────────────────────────────────────────
 
 def download_users() -> tuple[pd.DataFrame, str | None]:

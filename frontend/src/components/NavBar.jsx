@@ -5,6 +5,7 @@ const LINKS = [
   { to: "/app/home",     label: "Overview" },
   { to: "/app/process",  label: "Process Recording" },
   { to: "/app/analysis", label: "Analysis" },
+  { to: "/app/timeline", label: "Timeline" },
 ];
 
 export default function NavBar() {

@@ -1,11 +1,13 @@
-import { useRef, useState } from "react";
-import { wsUrl } from "../api";
+import { useRef, useState, useEffect, useContext } from "react";
+import { wsUrl, uploadVideo, fetchJob, addLocation, deleteLocation } from "../api";
+import { LocationsContext } from "../App";
 
-const LOCATIONS = ["A", "B", "C"];
 const CHUNK_SIZE = 1024 * 1024;
+const LARGE_FILE_THRESHOLD = 500 * 1024 * 1024; // 500 MB
 
 export default function Process() {
-  const [location,     setLocation]     = useState("A");
+  const { locations, reload: reloadLocations } = useContext(LocationsContext);
+  const [location,     setLocation]     = useState("");
   const [file,         setFile]         = useState(null);
   const [recordedDate, setRecordedDate] = useState("");
   const [recordedTime, setRecordedTime] = useState("");
@@ -16,19 +18,92 @@ export default function Process() {
   const [result,       setResult]       = useState(null);
   const [errorMsg,     setErrorMsg]     = useState("");
   const [dragOver,     setDragOver]     = useState(false);
-  const canvasRef = useRef(null);
-  const wsRef     = useRef(null);
+  const [jobId,        setJobId]        = useState(null);
+  const [isLargeFile,  setIsLargeFile]  = useState(false);
+  const [newLocName,   setNewLocName]   = useState("");
+  const [locError,     setLocError]     = useState("");
+  const [locLoading,   setLocLoading]   = useState(false);
+  const canvasRef   = useRef(null);
+  const wsRef       = useRef(null);
+  const pollRef     = useRef(null);
+
+  // Auto-select first location when locations load
+  useEffect(() => {
+    if (locations.length > 0 && !locations.includes(location)) {
+      setLocation(locations[0]);
+    }
+  }, [locations]);
+
+  async function handleAddLocation(e) {
+    e.preventDefault();
+    const name = newLocName.trim();
+    if (!name) return;
+    setLocLoading(true); setLocError("");
+    try {
+      await addLocation(name);
+      setNewLocName("");
+      await reloadLocations();
+      setLocation(name);
+    } catch (err) {
+      setLocError(err.message);
+    } finally {
+      setLocLoading(false);
+    }
+  }
+
+  async function handleDeleteLocation(name) {
+    setLocLoading(true); setLocError("");
+    try {
+      await deleteLocation(name);
+      await reloadLocations();
+    } catch (err) {
+      setLocError(err.message);
+    } finally {
+      setLocLoading(false);
+    }
+  }
+
+  // Poll job status for background jobs
+  useEffect(() => {
+    if (!jobId) return;
+    pollRef.current = setInterval(async () => {
+      try {
+        const job = await fetchJob(jobId);
+        setProgress(job.progress || 0);
+        setUniqueBirds(job.unique_birds || 0);
+        setElapsed(job.elapsed || 0);
+        if (job.status === "done") {
+          clearInterval(pollRef.current);
+          setResult(job.result);
+          setStatus("done");
+        } else if (job.status === "error") {
+          clearInterval(pollRef.current);
+          setStatus("error");
+          setErrorMsg(job.error || "Processing failed.");
+        } else if (job.status === "processing") {
+          setStatus("processing");
+        }
+      } catch {
+        // polling errors are transient; keep trying
+      }
+    }, 5000);
+    return () => clearInterval(pollRef.current);
+  }, [jobId]);
 
   function handleFileChange(e) {
     const f = e.target.files?.[0] || null;
     setFile(f); setResult(null); setStatus("idle");
-    setProgress(0); setUniqueBirds(0); setElapsed(0);
+    setProgress(0); setUniqueBirds(0); setElapsed(0); setJobId(null);
+    setIsLargeFile(f ? f.size >= LARGE_FILE_THRESHOLD : false);
   }
 
   function handleDrop(e) {
     e.preventDefault(); setDragOver(false);
     const f = e.dataTransfer.files?.[0] || null;
-    if (f) { setFile(f); setResult(null); setStatus("idle"); setProgress(0); }
+    if (f) {
+      setFile(f); setResult(null); setStatus("idle"); setProgress(0); setJobId(null);
+      setIsLargeFile(f.size >= LARGE_FILE_THRESHOLD);
+    }
   }
 
   function drawFrame(bytes) {
@@ -48,17 +123,34 @@ export default function Process() {
 
   async function runDetection() {
     if (!file || !location) return;
-    setStatus("uploading"); setProgress(0); setResult(null); setErrorMsg("");
+    setStatus("uploading"); setProgress(0); setResult(null); setErrorMsg(""); setJobId(null);
     const token = localStorage.getItem("token") || "";
+    const recorded_at = recordedDate && recordedTime
+      ? `${recordedDate} ${recordedTime}`
+      : recordedDate || null;
+
+    if (file.size >= LARGE_FILE_THRESHOLD) {
+      // Background job path for large files
+      try {
+        const { job_id } = await uploadVideo(
+          { file, token, location, filename: file.name, threshold: THRESHOLD, recorded_at },
+          (pct) => setProgress(pct * 0.5), // upload = first 50% of progress bar
+        );
+        setJobId(job_id);
+        setStatus("queued");
+      } catch (err) {
+        setStatus("error");
+        setErrorMsg(err.message || "Upload failed.");
+      }
+      return;
+    }
+
+    // WebSocket path for files < 500 MB
     const ws = new WebSocket(wsUrl());
     wsRef.current = ws;
     ws.binaryType = "arraybuffer";
 
     ws.onopen = async () => {
-      // build recorded_at from whatever the user entered; never fall back to upload time
-      const recorded_at = recordedDate && recordedTime
-        ? `${recordedDate} ${recordedTime}`
-        : recordedDate || null;
       ws.send(JSON.stringify({ token, location, filename: file.name, threshold: THRESHOLD, recorded_at }));
       setStatus("uploading");
       const buffer = await file.arrayBuffer();
@@ -93,7 +185,7 @@ export default function Process() {
   }
 
   const THRESHOLD = 127;
-  const isRunning = status === "uploading" || status === "processing";
+  const isRunning = status === "uploading" || status === "processing" || status === "queued";
   const pct = Math.round(progress * 100);
 
   return (
@@ -104,8 +196,14 @@ export default function Process() {
         <div className="page-eyebrow">Detection pipeline</div>
         <h1 className="page-title">Process a Recording</h1>
         <p className="page-subtitle">
-          Configure the detection run, upload your field video, and watch annotated
-          frames stream back in real time.
+          Upload a field video and the system will automatically count every flying bird,
+          measure peak activity, and save the results to your location's record.
+        </p>
+        <p className="page-subtitle" style={{ marginTop: 10 }}>
+          Birds cause crop losses by arriving at predictable spots and times.
+          Recording footage at each vulnerable location — feed areas, open crop rows,
+          water sources — and processing it here builds the evidence you need to deploy
+          deterrents where and when they will actually work.
         </p>
       </div>
 
@@ -115,19 +213,73 @@ export default function Process() {
         {/* Location */}
         <div className="panel">
           <div className="panel-label">Camera location</div>
-          <div className="location-grid">
-            {LOCATIONS.map(loc => (
-              <button
-                key={loc}
-                className={`loc-btn${location === loc ? " active" : ""}`}
-                onClick={() => setLocation(loc)}
-                disabled={isRunning}
-              >
-                <span className="loc-btn-id">{loc}</span>
-                <span className="loc-btn-label">Location</span>
-              </button>
-            ))}
-          </div>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "6px 0 12px", lineHeight: 1.6 }}>
+            Each location is a distinct spot on your farm where you have placed a camera —
+            for example <em>North Field</em>, <em>Feed Barn</em>, or <em>Gate Row</em>.
+            Keeping locations separate lets you compare which spots attract the most birds
+            and at what times, so you can target deterrents precisely.
+            Add as many locations as you have camera sites. To log a recording, select the
+            location it was filmed at before uploading.
+          </p>
+
+          {locations.length === 0 ? (
+            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "10px 0" }}>
+              No locations added yet — use the field below to add your first camera site.
+            </p>
+          ) : (
+            <div className="location-grid">
+              {locations.map(loc => (
+                <div key={loc} style={{ position: "relative", display: "inline-flex" }}>
+                  <button
+                    className={`loc-btn${location === loc ? " active" : ""}`}
+                    onClick={() => setLocation(loc)}
+                    disabled={isRunning}
+                    style={{ paddingRight: 28 }}
+                  >
+                    <span className="loc-btn-id" style={{ fontSize: Math.max(10, 18 - Math.max(0, loc.length - 3)) }}>{loc}</span>
+                    <span className="loc-btn-label">Location</span>
+                  </button>
+                  {!isRunning && (
+                    <button
+                      onClick={() => handleDeleteLocation(loc)}
+                      disabled={locLoading}
+                      title={`Remove ${loc}`}
+                      style={{
+                        position: "absolute", top: 4, right: 4,
+                        background: "none", border: "none", cursor: "pointer",
+                        color: "var(--text-muted)", fontSize: 13, lineHeight: 1,
+                        padding: "2px 3px", borderRadius: 3,
+                      }}
+                    >×</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add location form */}
+          <form onSubmit={handleAddLocation} style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+            <input
+              type="text"
+              value={newLocName}
+              onChange={e => { setNewLocName(e.target.value); setLocError(""); }}
+              placeholder="e.g. North Field, Feed Barn, Gate Row"
+              maxLength={50}
+              disabled={isRunning || locLoading}
+              style={{ flex: 1, fontSize: 13, padding: "6px 10px" }}
+            />
+            <button
+              type="submit"
+              className="btn btn-outline"
+              disabled={!newLocName.trim() || isRunning || locLoading}
+              style={{ fontSize: 12, padding: "6px 14px", whiteSpace: "nowrap" }}
+            >
+              + Add
+            </button>
+          </form>
+          {locError && (
+            <p style={{ fontSize: 12, color: "#ef4444", marginTop: 6 }}>{locError}</p>
+          )}
         </div>
 
         {/* Date & time */}
@@ -164,6 +316,11 @@ export default function Process() {
               <span className="dropzone-icon">🎥</span>
               <div className="dropzone-text">{file.name}</div>
               <div className="dropzone-sub">{(file.size / 1024 / 1024).toFixed(1)} MB · Click or drag to replace</div>
+              {isLargeFile && (
+                <div className="dropzone-sub" style={{ marginTop: 6, color: "var(--forest)", fontWeight: 500 }}>
+                  Large file — will be processed as a background job. You can close this tab and check the Analysis page later.
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -188,8 +345,40 @@ export default function Process() {
         </div>
       </div>
 
-      {/* ── Live viewport ── */}
-      {(isRunning || status === "done") && (
+      {/* ── Background job status panel (large files) ── */}
+      {jobId && (status === "queued" || status === "processing" || status === "done") && isLargeFile && (
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <div className="panel-label">Background job — Location {location}</div>
+          {status === "queued" && (
+            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "10px 0 0" }}>
+              Video received. Detection will begin shortly — you can close this tab and return later.
+            </p>
+          )}
+          {status === "processing" && (
+            <>
+              <div className="progress-track" style={{ marginTop: 12 }}>
+                <div className="progress-fill" style={{ width: `${pct}%` }} />
+              </div>
+              <div className="progress-meta">
+                <span>{pct}% complete</span>
+                <span>{uniqueBirds} bird{uniqueBirds !== 1 ? "s" : ""} detected</span>
+                <span>{Math.floor(elapsed / 60)}m {Math.round(elapsed % 60)}s elapsed</span>
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
+                Processing in background — this page polls every 5 s. Safe to close and check Analysis later.
+              </p>
+            </>
+          )}
+          {status === "done" && (
+            <p style={{ fontSize: 13, color: "var(--forest)", margin: "10px 0 0", fontWeight: 500 }}>
+              Processing complete. Results saved to your account.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── Live viewport (WebSocket / small files only) ── */}
+      {!isLargeFile && (isRunning || status === "done") && (
         <div className="panel" style={{ marginBottom: 16, padding: 0, overflow: "hidden" }}>
           <div className="detection-viewport">
             <canvas ref={canvasRef} />

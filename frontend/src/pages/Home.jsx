@@ -10,15 +10,25 @@ export default function Home() {
         <div className="home-hero-split">
           {/* Left: text */}
           <div className="home-hero-text">
-            <div className="home-hero-eyebrow">MSU CVM · Wild bird monitoring system</div>
+            <div className="home-hero-eyebrow">MSU CVM · Agricultural bird damage monitoring</div>
             <h1 className="home-hero-title">
               Field Research <em>Station</em>
             </h1>
             <p className="home-hero-sub" style={{ maxWidth: "100%" }}>
-              Record videos periodically and process them to analyse bird activity patterns over time.
-              <b style={{ display: "block", marginTop: 10, color: "rgba(255,255,255,0.55)", fontWeight: 500, fontSize: 12 }}>
-                Note: This tool measures activity patterns — not an exact bird census.
-              </b>
+              Birds feeding on farm crops cause real, measurable losses. Flocks arrive in concentrated
+              bursts — often at the same field locations and the same times of day — consuming or
+              contaminating food stores before farmers can intervene. Deploying deterrents effectively
+              requires knowing <em>where</em> birds are arriving, <em>how many</em>, and <em>when</em> the
+              pressure is highest.
+            </p>
+            <p className="home-hero-sub" style={{ maxWidth: "100%", marginTop: 10, opacity: 0.75 }}>
+              Place a camera at each vulnerable spot on your farm, record short clips regularly,
+              and upload them here. The system counts birds automatically, measures peak activity
+              times, and builds a growing record per location — giving you the evidence to position
+              diversions where and when they will have the greatest effect.
+            </p>
+            <p style={{ marginTop: 10, color: "rgba(255,255,255,0.45)", fontWeight: 500, fontSize: 12 }}>
+              Note: This tool measures activity patterns — not an exact bird census.
             </p>
             <ul className="home-hero-bullets">
               <li>
@@ -97,8 +107,8 @@ export default function Home() {
               },
               {
                 n: "Step 02",
-                title: "Select location",
-                desc: "On the Process page, choose which camera site you recorded at — Location A, B, or C — and enter the exact date and start time of the recording.",
+                title: "Add and select a location",
+                desc: "On the Process page, add each camera site by name — anything that identifies the spot, like 'North Field', 'Feed Barn', or 'Gate Row'. Select the location that matches this recording, then enter the date and start time.",
               },
               {
                 n: "Step 03",

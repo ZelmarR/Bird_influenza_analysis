@@ -8,7 +8,7 @@ import time
 
 log = logging.getLogger("bird_counter")
 
-FRAME_SKIP                    = 1
+FRAME_SKIP                    = 2
 RESIZE_FACTOR                 = 0.8
 MIN_BIRD_AREA                 = 4        # distant birds can be 2×2 px dots
 MAX_BIRD_AREA                 = 800
@@ -180,11 +180,9 @@ def detect_moving_birds(current_detections, current_gray_roi, prev_gray_roi, roi
     if prev_gray_roi.shape != current_gray_roi.shape:
         return [], current_gray_roi
 
-    # Optical flow on ROI only (not full frame) for speed.
-    # levels=2 and winsize=11 instead of notebook's 3/15 — ~4x faster, adequate for small birds.
     flow = cv2.calcOpticalFlowFarneback(
         prev_gray_roi, current_gray_roi, None,
-        0.5, 3, 15, 3, 5, 1.2, 0,
+        0.5, 2, 11, 3, 5, 1.2, 0,
     )
     frame_diff = cv2.absdiff(prev_gray_roi, current_gray_roi)
     fh, fw = current_gray_roi.shape[:2]
@@ -231,6 +229,16 @@ class ImprovedBirdTracker:
         self.track_id = 0
         self.confirmed_flying_birds = set()
 
+    def _near_confirmed_track(self, x, y, exclude_tid=None):
+        """Return True if (x, y) is within MAX_MATCHING_DISTANCE of any confirmed track other than exclude_tid."""
+        for tid in self.confirmed_flying_birds:
+            if tid == exclude_tid or tid not in self.tracks:
+                continue
+            lx, ly = self.tracks[tid]['positions'][-1]
+            if math.sqrt((x - lx) ** 2 + (y - ly) ** 2) < MAX_MATCHING_DISTANCE:
+                return True
+        return False
+
     def update_tracks(self, detections):
         matched_tracks = {}
         current_frame_birds = []
@@ -259,16 +267,21 @@ class ImprovedBirdTracker:
                 self.tracks[best_match]['stationary_count'] = 0
                 self.tracks[best_match]['detections'].append(detection)
                 matched_tracks[best_match] = detection
-                if self.is_flying_improved(best_match):
-                    self.confirmed_flying_birds.add(best_match)
-                    current_frame_birds.append(detection)
+                if best_match not in self.confirmed_flying_birds and self.is_flying_improved(best_match):
+                    # Only confirm if this track isn't spatially duplicating an already-confirmed one
+                    if not self._near_confirmed_track(x, y, exclude_tid=best_match):
+                        self.confirmed_flying_birds.add(best_match)
+                        current_frame_birds.append(detection)
             else:
-                self.tracks[self.track_id] = {
-                    'positions': [(x, y)],
-                    'stationary_count': 0,
-                    'detections': [detection],
-                }
-                self.track_id += 1
+                # Don't start a new track if a confirmed track already covers this position —
+                # the confirmed bird just temporarily escaped detection
+                if not self._near_confirmed_track(x, y):
+                    self.tracks[self.track_id] = {
+                        'positions': [(x, y)],
+                        'stationary_count': 0,
+                        'detections': [detection],
+                    }
+                    self.track_id += 1
 
         for tid in list(self.tracks):
             if tid not in matched_tracks:
