@@ -280,50 +280,140 @@ async def async_generator(sync_gen):
     await task
 
 
-@app.post("/upload")
-async def upload_video(
-    file: UploadFile = File(...),
+# ── Chunked resumable upload ──────────────────────────────────────────────────
+# State: upload_id -> { tmp_path, filename, location, threshold, recorded_at,
+#                       user, total_chunks, received: set[int] }
+_uploads: dict[str, dict] = {}
+
+
+class UploadInitBody(BaseModel):
+    token: str
+    location: str
+    filename: str
+    total_chunks: int
+    file_size: int  # exact byte size of the original file
+    threshold: int = 127
+    recorded_at: str = ""
+
+
+@app.post("/upload/init")
+@limiter.limit("20/minute")
+def upload_init(request: Request, body: UploadInitBody):
+    from auth import verify_token as _verify
+    user = _verify(body.token)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    if not body.location:
+        raise HTTPException(status_code=400, detail="Location is required")
+    if body.total_chunks < 1:
+        raise HTTPException(status_code=400, detail="total_chunks must be >= 1")
+
+    suffix = os.path.splitext(body.filename)[1] or ".mp4"
+    tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    tmp.close()
+    # Pre-allocate exact file size so seek-and-write works for every chunk
+    with open(tmp.name, "wb") as f:
+        f.seek(body.file_size - 1)
+        f.write(b"\x00")
+
+    upload_id = str(uuid.uuid4())
+    _uploads[upload_id] = {
+        "tmp_path": tmp.name,
+        "filename": body.filename,
+        "location": body.location,
+        "threshold": max(50, min(220, body.threshold)),
+        "recorded_at": body.recorded_at or None,
+        "user": user,
+        "total_chunks": body.total_chunks,
+        "file_size": body.file_size,
+        "received": set(),
+    }
+    log.info("Upload init: upload_id=%s filename=%s total_chunks=%d", upload_id, body.filename, body.total_chunks)
+    return {"upload_id": upload_id}
+
+
+@app.post("/upload/chunk")
+@limiter.limit("600/minute")
+async def upload_chunk(
+    request: Request,
+    upload_id: str = Form(...),
+    chunk_index: int = Form(...),
     token: str = Form(...),
-    location: str = Form(...),
-    filename: str = Form(...),
-    threshold: int = Form(127),
-    recorded_at: str = Form(""),
+    chunk: UploadFile = File(...),
 ):
     from auth import verify_token as _verify
     user = _verify(token)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    if not location:
-        raise HTTPException(status_code=400, detail="Location is required")
-    threshold = max(50, min(220, threshold))
 
-    suffix = os.path.splitext(filename)[1] or ".mp4"
-    tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-    tmp.close()
-    total_bytes = 0
-    with open(tmp.name, "wb") as f:
-        while True:
-            chunk = await file.read(1024 * 1024)
-            if not chunk:
-                break
-            f.write(chunk)
-            total_bytes += len(chunk)
-    log.info("Upload complete: %.1f MB written to %s", total_bytes / 1e6, tmp.name)
+    upload = _uploads.get(upload_id)
+    if upload is None:
+        raise HTTPException(status_code=404, detail="Upload session not found")
+    if upload["user"] != user:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if chunk_index < 0 or chunk_index >= upload["total_chunks"]:
+        raise HTTPException(status_code=400, detail="Invalid chunk_index")
 
-    if total_bytes == 0:
-        os.unlink(tmp.name)
-        raise HTTPException(status_code=400, detail="No video data received")
+    # Idempotent: if already received, skip writing but return success
+    if chunk_index in upload["received"]:
+        return {"upload_id": upload_id, "chunk_index": chunk_index, "received": len(upload["received"])}
+
+    data = await chunk.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty chunk")
+
+    # Write at correct byte offset — chunk_index * CHUNK_SIZE
+    CHUNK_SIZE = 5 * 1024 * 1024  # 5 MB
+    offset = chunk_index * CHUNK_SIZE
+    with open(upload["tmp_path"], "r+b") as f:
+        f.seek(offset)
+        f.write(data)
+
+    upload["received"].add(chunk_index)
+    log.debug("Chunk %d/%d received for upload %s", chunk_index + 1, upload["total_chunks"], upload_id)
+    return {"upload_id": upload_id, "chunk_index": chunk_index, "received": len(upload["received"])}
+
+
+@app.post("/upload/finalize")
+@limiter.limit("20/minute")
+def upload_finalize(request: Request, upload_id: str = Form(...), token: str = Form(...)):
+    from auth import verify_token as _verify
+    user = _verify(token)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+
+    upload = _uploads.get(upload_id)
+    if upload is None:
+        raise HTTPException(status_code=404, detail="Upload session not found")
+    if upload["user"] != user:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    missing = sorted(set(range(upload["total_chunks"])) - upload["received"])
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing chunks: {missing[:10]}")
+
+    # Truncate to exact file size (pre-allocation may have added a trailing null byte)
+    with open(upload["tmp_path"], "r+b") as f:
+        f.truncate(upload["file_size"])
+
+    total_bytes = os.path.getsize(upload["tmp_path"])
+    log.info("Upload finalized: upload_id=%s %.1f MB", upload_id, total_bytes / 1e6)
 
     job_id = str(uuid.uuid4())
     _jobs[job_id] = {"status": "queued", "progress": 0, "unique_birds": 0, "elapsed": 0}
 
     thread = threading.Thread(
         target=_run_job,
-        args=(job_id, tmp.name, filename, location, threshold, user, recorded_at or None),
+        args=(
+            job_id, upload["tmp_path"], upload["filename"],
+            upload["location"], upload["threshold"], upload["user"], upload["recorded_at"],
+        ),
         daemon=True,
     )
     thread.start()
-    log.info("Job %s queued for %s (%.1f MB)", job_id, filename, total_bytes / 1e6)
+
+    del _uploads[upload_id]
+    log.info("Job %s started from upload %s", job_id, upload_id)
     return {"job_id": job_id}
 
 
