@@ -3,8 +3,10 @@ import json
 import logging
 import os
 import tempfile
+import threading
+import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any
 
 from dotenv import load_dotenv
 load_dotenv()  # loads backend/.env when running locally; env vars from Railway take precedence
@@ -15,7 +17,8 @@ if _missing:
     raise RuntimeError(f"Missing required environment variables: {', '.join(_missing)}")
 
 import cv2
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, Request, status
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, Request, UploadFile, File, Form, status
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -24,7 +27,7 @@ from slowapi.errors import RateLimitExceeded
 
 from auth import router as auth_router, get_current_user
 from detection import process_video_streaming
-from github_utils import download_csv, upload_csv, RESULTS_COLUMNS
+from github_utils import download_csv, upload_csv, RESULTS_COLUMNS, download_locations, upload_locations
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -33,7 +36,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("bird_counter")
 
-Location = Literal["A", "B", "C"]
+Location = str  # formerly Literal["A", "B", "C"] — now user-defined
 
 ALLOWED_ORIGINS = os.environ.get(
     "ALLOWED_ORIGINS",
@@ -56,10 +59,51 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/auth")
 
+# In-memory job store: job_id -> state dict
+_jobs: dict[str, dict] = {}
+
 
 @app.get("/")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/locations")
+@limiter.limit("60/minute")
+def get_locations(request: Request, user: str = Depends(get_current_user)):
+    locs, _ = download_locations(user_email=user)
+    return locs
+
+
+class LocationBody(BaseModel):
+    name: str
+
+
+@app.post("/locations", status_code=201)
+@limiter.limit("30/minute")
+def add_location(request: Request, body: LocationBody, user: str = Depends(get_current_user)):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Location name cannot be empty")
+    if len(name) > 50:
+        raise HTTPException(status_code=400, detail="Location name too long (max 50 chars)")
+    locs, sha = download_locations(user_email=user)
+    if name in locs:
+        raise HTTPException(status_code=409, detail="Location already exists")
+    locs.append(name)
+    upload_locations(locs, sha, user_email=user)
+    return locs
+
+
+@app.delete("/locations/{name}")
+@limiter.limit("30/minute")
+def delete_location(request: Request, name: str, user: str = Depends(get_current_user)):
+    locs, sha = download_locations(user_email=user)
+    if name not in locs:
+        raise HTTPException(status_code=404, detail="Location not found")
+    locs = [l for l in locs if l != name]
+    upload_locations(locs, sha, user_email=user)
+    return locs
 
 
 @app.get("/results/{location}")
@@ -100,9 +144,9 @@ async def process_video(websocket: WebSocket):
             return
         log.info("Token verified, user=%s", user)
 
-        if location not in ("A", "B", "C"):
-            log.warning("Invalid location: %r", location)
-            await websocket.send_text(json.dumps({"error": "Invalid location"}))
+        if not location:
+            log.warning("Missing location")
+            await websocket.send_text(json.dumps({"error": "Location is required"}))
             await websocket.close(code=1003)
             return
 
@@ -189,7 +233,8 @@ async def process_video(websocket: WebSocket):
                     log.info("GitHub save OK")
                 except Exception as gh_err:
                     log.error("GitHub save failed: %s", gh_err)
-                await websocket.send_text(json.dumps({"done": True, **result}))
+                safe_result = {k: float(v) if hasattr(v, 'item') else v for k, v in result.items()}
+                await websocket.send_text(json.dumps({"done": True, **safe_result}))
                 log.info("Done message sent to client")
             else:
                 log.error("Generator returned no result — sending error to client")
@@ -233,6 +278,94 @@ async def async_generator(sync_gen):
         yield item
 
     await task
+
+
+@app.post("/upload")
+async def upload_video(
+    file: UploadFile = File(...),
+    token: str = Form(...),
+    location: str = Form(...),
+    filename: str = Form(...),
+    threshold: int = Form(127),
+    recorded_at: str = Form(""),
+):
+    from auth import verify_token as _verify
+    user = _verify(token)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    if not location:
+        raise HTTPException(status_code=400, detail="Location is required")
+    threshold = max(50, min(220, threshold))
+
+    suffix = os.path.splitext(filename)[1] or ".mp4"
+    tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    tmp.close()
+    total_bytes = 0
+    with open(tmp.name, "wb") as f:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
+            total_bytes += len(chunk)
+    log.info("Upload complete: %.1f MB written to %s", total_bytes / 1e6, tmp.name)
+
+    if total_bytes == 0:
+        os.unlink(tmp.name)
+        raise HTTPException(status_code=400, detail="No video data received")
+
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {"status": "queued", "progress": 0, "unique_birds": 0, "elapsed": 0}
+
+    thread = threading.Thread(
+        target=_run_job,
+        args=(job_id, tmp.name, filename, location, threshold, user, recorded_at or None),
+        daemon=True,
+    )
+    thread.start()
+    log.info("Job %s queued for %s (%.1f MB)", job_id, filename, total_bytes / 1e6)
+    return {"job_id": job_id}
+
+
+@app.get("/job/{job_id}")
+def get_job(job_id: str, user: str = Depends(get_current_user)):
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+
+def _run_job(job_id: str, tmp_path: str, filename: str, location: str,
+             threshold: int, user: str, recorded_at: str | None) -> None:
+    _jobs[job_id]["status"] = "processing"
+    log.info("Job %s starting detection on %s", job_id, tmp_path)
+    try:
+        result = None
+        for item in process_video_streaming(tmp_path, threshold=threshold):
+            if item["kind"] == "progress":
+                _jobs[job_id].update({
+                    "progress": item["progress"],
+                    "unique_birds": item["unique_birds"],
+                    "elapsed": item["elapsed"],
+                })
+            elif item["kind"] == "result":
+                result = item["data"]
+        if result:
+            _save_result(result, filename, location, user=user, recorded_at=recorded_at)
+            _jobs[job_id].update({"status": "done", "result": result, "progress": 1.0})
+            log.info("Job %s done: %d unique birds", job_id, result.get("unique_flying_birds", 0))
+        else:
+            _jobs[job_id].update({"status": "error", "error": "Detection produced no result"})
+            log.error("Job %s: generator produced no result", job_id)
+    except Exception as e:
+        _jobs[job_id].update({"status": "error", "error": str(e)})
+        log.exception("Job %s failed: %s", job_id, e)
+    finally:
+        try:
+            os.unlink(tmp_path)
+            log.debug("Job %s: temp file deleted", job_id)
+        except Exception:
+            pass
 
 
 def _save_result(result: dict, filename: str, location: str, user: str = "", recorded_at: str | None = None) -> None:

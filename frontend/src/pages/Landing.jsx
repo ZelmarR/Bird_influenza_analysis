@@ -1,81 +1,7 @@
 
 import { Link } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
-import heroImg from "../assets/hero.png";
-
-/* Simulated detections shown on the camera-frame mock */
-const DETECTIONS = [
-  { id: "B-04", x: "22%",  y: "28%", w: "11%", h: "14%", conf: 0.91, color: "#ef4444", trail: [{x:"20%",y:"32%"},{x:"19%",y:"31%"},{x:"21%",y:"29%"}] },
-  { id: "B-07", x: "54%",  y: "18%", w: "9%",  h: "11%", conf: 0.87, color: "#ef4444", trail: [{x:"50%",y:"22%"},{x:"52%",y:"20%"},{x:"53%",y:"18%"}] },
-  { id: "C-02", x: "70%",  y: "42%", w: "8%",  h: "10%", conf: 0.63, color: "#facc15", trail: [] },
-  { id: "B-11", x: "38%",  y: "55%", w: "10%", h: "13%", conf: 0.79, color: "#ef4444", trail: [{x:"35%",y:"58%"},{x:"36%",y:"56%"}] },
-];
-
-function CameraFrame() {
-  const [frame, setFrame] = useState(0);
-  const [ts, setTs]       = useState("08:14:32");
-
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setFrame(f => f + 1);
-      setTs(() => {
-        const now = new Date();
-        return `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
-      });
-    }, 1000);
-    return () => clearInterval(iv);
-  }, []);
-
-  return (
-    <div className="cam-frame">
-      <img src={heroImg} alt="Field camera feed" />
-
-      {/* Scanline sweep */}
-      <div className="cam-scanline" />
-
-      {/* Motion trails */}
-      {DETECTIONS.map(det => det.trail.map((pt, i) => (
-        <div key={`${det.id}-t${i}`} className="cam-trail" style={{
-          left: pt.x, top: pt.y,
-          width: 5 - i, height: 5 - i,
-          background: det.color,
-          opacity: 0.3 - i * 0.06,
-        }} />
-      )))}
-
-      {/* Bounding boxes */}
-      {DETECTIONS.map(det => (
-        <div key={det.id} className="cam-bbox" style={{
-          left: det.x, top: det.y, width: det.w, height: det.h,
-          borderColor: det.color,
-        }}>
-          <div className="cam-bbox-label" style={{ background: det.color, color: "#fff" }}>
-            {det.id} · {(det.conf * 100).toFixed(0)}%
-          </div>
-        </div>
-      ))}
-
-      {/* HUD top */}
-      <div className="cam-hud-top">
-        <span className="cam-badge cam-badge-rec">REC</span>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-          <span className="cam-badge cam-badge-info">LOC A · FRAME {(frame % 9000) + 1200}</span>
-          <span className="cam-badge cam-badge-info">{ts}</span>
-        </div>
-      </div>
-
-      {/* HUD bottom */}
-      <div className="cam-hud-bottom">
-        <span className="cam-badge cam-badge-info">
-          {DETECTIONS.filter(d => d.color === "#ef4444").length} CONFIRMED · {DETECTIONS.filter(d => d.color === "#facc15").length} CANDIDATE
-        </span>
-        <span className="cam-badge cam-badge-info" style={{ color: "#86efac" }}>
-          ▶ LIVE ANALYSIS
-        </span>
-      </div>
-    </div>
-  );
-}
+import { useEffect, useRef } from "react";
+import screenshot from "../assets/screenshot.png";
 
 const GALLERY_ITEMS = [
   {
@@ -124,15 +50,18 @@ export default function Landing() {
       <section className="hero">
         {/* Left: copy */}
         <div style={{ animation: "fadeUp 0.7s ease both" }}>
-          <div className="hero-eyebrow">Avian Monitoring · Computer Vision</div>
+          <div className="hero-eyebrow">Agricultural bird damage — automated monitoring</div>
           <h1 className="hero-h1">
-            See what the<br />
-            field camera <em>sees.</em>
+            Know when birds<br />
+            hit the <em>farm.</em>
           </h1>
           <p className="hero-p">
-            Automatically detect, count, and track flying birds across field recordings
-            using optical flow and multi-object tracking — giving researchers fast,
-            reproducible metrics without manual review.
+            Birds cause significant crop losses on farms — flocking at feeding times,
+            concentrating at specific field locations, and returning in predictable patterns.
+            To deploy effective diversions, farmers and researchers first need hard numbers:
+            how many birds, at which locations, and at what times of day.
+            This system processes field camera recordings to deliver exactly that,
+            automatically — no manual review required.
           </p>
           <div className="hero-ctas">
             <Link to="/login" className="cta-primary">
@@ -147,9 +76,9 @@ export default function Landing() {
           {/* Tiny proof points */}
           <div style={{ display: "flex", gap: 24, marginTop: 36, flexWrap: "wrap" }}>
             {[
-              ["Optical flow", "motion detection"],
-              ["Multi-object", "tracking"],
-              ["Per-user", "data isolation"],
+              ["Any location", "farmer-defined sites"],
+              ["Time & count", "quantified activity"],
+              ["Per-user", "isolated data"],
             ].map(([top, bot]) => (
               <div key={top} style={{ borderLeft: "2px solid var(--sage-mid)", paddingLeft: 12 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--charcoal)" }}>{top}</div>
@@ -159,9 +88,9 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Right: camera frame */}
+        {/* Right: screenshot */}
         <div className="hero-visual">
-          <CameraFrame />
+          <img src={screenshot} alt="Bird detection output" style={{ width: "100%", borderRadius: 8, display: "block" }} />
           {/* Corner decoration */}
           <div style={{
             position: "absolute", bottom: -14, right: -14,
@@ -188,22 +117,28 @@ export default function Landing() {
 
       {/* ── Method ── */}
       <section className="landing-section">
-        <div className="section-eyebrow">Detection pipeline</div>
+        <div className="section-eyebrow">The problem — and the solution</div>
         <h2 className="section-title">
-          Observe. Detect.<br />Understand.
+          Quantify first.<br />Divert smarter.
         </h2>
         <p className="section-body">
-          Each recording passes through a classical computer vision pipeline optimised
-          for field conditions — variable lighting, fast-moving subjects, and cluttered
-          sky backgrounds.
+          Bird damage to crops is a real and costly problem for farms. Flocks arrive
+          at predictable times, concentrate at specific field locations, and can consume
+          or contaminate large portions of a harvest before a farmer can respond.
+          Conventional deterrents — noise cannons, reflective tape, netting — are only
+          effective when deployed at the right place and the right time. Without data,
+          farmers are guessing. This platform turns field camera footage into precise,
+          per-location activity records: how many birds arrived, when during the day,
+          and how that pattern shifts over the season. With that evidence in hand,
+          diversionary measures can be targeted rather than scattered.
         </p>
 
         <div className="steps">
           {[
-            { n: "01", title: "Upload recording", desc: "Select the camera location and upload your .mp4, .avi, or .mov file. Date and time metadata are recorded for longitudinal analysis." },
-            { n: "02", title: "Adaptive threshold", desc: "Gaussian adaptive thresholding separates birds from sky regardless of overcast or bright conditions." },
-            { n: "03", title: "Optical flow tracking", desc: "Farneback optical flow computes per-pixel motion vectors. Birds are confirmed by directional coherence across frames." },
-            { n: "04", title: "Metrics & storage", desc: "Results — unique birds, peak concurrency, motion scores — are saved per user and location for longitudinal trend analysis." },
+            { n: "01", title: "Set up cameras at key locations", desc: "Place a camera at each spot on the farm where bird activity is suspected — feed stores, open crop rows, water sources. Each location is tracked separately so you can compare activity levels across the farm." },
+            { n: "02", title: "Record and upload footage", desc: "Capture a video clip at each location and upload it here. Enter the recording date and start time so activity can be plotted accurately on the timeline." },
+            { n: "03", title: "Automated detection runs", desc: "The system uses optical flow and multi-object tracking to detect and count flying birds frame by frame — no manual tagging needed." },
+            { n: "04", title: "Act on the data", desc: "Results show bird counts, peak arrival times, and activity trends per location. Use this to position diversions where and when they will have the greatest effect." },
           ].map(({ n, title, desc }) => (
             <div key={n} className="step">
               <div className="step-num">{n}</div>
@@ -227,10 +162,10 @@ export default function Landing() {
           marginBottom: 14,
           letterSpacing: -0.5,
         }}>
-          Ready to analyse your recordings?
+          Ready to protect your farm?
         </div>
         <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 28 }}>
-          Request access and start processing field videos in minutes.
+          Create an account, add your camera locations, and start turning field footage into actionable data.
         </p>
         <Link to="/login" className="cta-primary">
           Create an account →
@@ -239,7 +174,7 @@ export default function Landing() {
 
       {/* ── Footer ── */}
       <footer className="landing-footer">
-        Bird Counter · MSU College of Veterinary Medicine · Avian influenza surveillance research
+        Bird Counter · MSU College of Veterinary Medicine · Agricultural bird damage research
       </footer>
     </div>
   );

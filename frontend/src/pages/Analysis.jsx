@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import {
   LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label,
 } from "recharts";
 import { fetchResults } from "../api";
+import { LocationsContext } from "../App";
 import "../App.css";
-
-const LOCATIONS = ["A", "B", "C"];
 
 function fmt(val, decimals = 1) {
   if (val === null || val === undefined || val === "") return "—";
@@ -377,7 +376,14 @@ function LocationTab({ location }) {
 }
 
 export default function Analysis() {
-  const [activeTab, setActiveTab] = useState("A");
+  const { locations } = useContext(LocationsContext);
+  const [activeTab, setActiveTab] = useState("");
+
+  useEffect(() => {
+    if (locations.length > 0 && !locations.includes(activeTab)) {
+      setActiveTab(locations[0]);
+    }
+  }, [locations]);
 
   return (
     <div className="page">
@@ -389,19 +395,31 @@ export default function Analysis() {
         </p>
       </div>
 
-      <div className="tab-rail">
-        {LOCATIONS.map((loc) => (
-          <button
-            key={loc}
-            className={`tab-item${activeTab === loc ? " active" : ""}`}
-            onClick={() => setActiveTab(loc)}
-          >
-            Location {loc}
-          </button>
-        ))}
-      </div>
-
-      <LocationTab key={activeTab} location={activeTab} />
+      {locations.length === 0 ? (
+        <div className="panel" style={{ textAlign: "center", padding: "48px 32px" }}>
+          <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 22, color: "var(--charcoal)", marginBottom: 10 }}>
+            No locations configured
+          </div>
+          <p style={{ color: "var(--text-muted)", fontSize: 14, maxWidth: 380, margin: "0 auto" }}>
+            Add camera locations on the Process page to start collecting data.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="tab-rail">
+            {locations.map((loc) => (
+              <button
+                key={loc}
+                className={`tab-item${activeTab === loc ? " active" : ""}`}
+                onClick={() => setActiveTab(loc)}
+              >
+                {loc}
+              </button>
+            ))}
+          </div>
+          {activeTab && <LocationTab key={activeTab} location={activeTab} />}
+        </>
+      )}
     </div>
   );
 }

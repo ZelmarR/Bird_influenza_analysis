@@ -96,3 +96,8 @@ def login(req: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     return {"access_token": _create_token(req.email), "token_type": "bearer"}
+
+
+@router.get("/me")
+def me(user: str = Depends(get_current_user)):
+    return {"email": user}
