@@ -2,8 +2,7 @@ import { useRef, useState, useEffect, useContext } from "react";
 import { wsUrl, uploadVideo, fetchJob, addLocation, deleteLocation } from "../api";
 import { LocationsContext } from "../App";
 
-const CHUNK_SIZE = 1024 * 1024;
-const LARGE_FILE_THRESHOLD = 500 * 1024 * 1024; // 500 MB
+const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024; // 50 MB — below this uses WebSocket live preview
 
 export default function Process() {
   const { locations, reload: reloadLocations } = useContext(LocationsContext);
@@ -318,7 +317,7 @@ export default function Process() {
               <div className="dropzone-sub">{(file.size / 1024 / 1024).toFixed(1)} MB · Click or drag to replace</div>
               {isLargeFile && (
                 <div className="dropzone-sub" style={{ marginTop: 6, color: "var(--forest)", fontWeight: 500 }}>
-                  Large file — will be processed as a background job. You can close this tab and check the Analysis page later.
+                  Large file — uploaded in 5 MB chunks with automatic retry. Safe to leave this tab open while it uploads. Processing runs in the background; check the Analysis page for results.
                 </div>
               )}
             </>
@@ -346,9 +345,20 @@ export default function Process() {
       </div>
 
       {/* ── Background job status panel (large files) ── */}
-      {jobId && (status === "queued" || status === "processing" || status === "done") && isLargeFile && (
+      {isLargeFile && (status === "uploading" || jobId) && (status === "uploading" || status === "queued" || status === "processing" || status === "done") && (
         <div className="panel" style={{ marginBottom: 16 }}>
           <div className="panel-label">Background job — Location {location}</div>
+          {status === "uploading" && (
+            <>
+              <div className="progress-track" style={{ marginTop: 12 }}>
+                <div className="progress-fill" style={{ width: `${pct}%` }} />
+              </div>
+              <div className="progress-meta">
+                <span>{pct}% uploaded</span>
+                <span style={{ color: "var(--text-muted)" }}>Uploading in chunks — do not close this tab</span>
+              </div>
+            </>
+          )}
           {status === "queued" && (
             <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "10px 0 0" }}>
               Video received. Detection will begin shortly — you can close this tab and return later.
