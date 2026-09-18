@@ -63,7 +63,7 @@ def _put_with_retry(url: str, **kwargs) -> requests.Response:
 def _fetch_file(path: str) -> tuple[str, str | None]:
     """Return (decoded_content, sha) or ('', None) if file doesn't exist."""
     url = f"{_API}/repos/{_repo()}/contents/{path}"
-    resp = _get_with_retry(url, headers=_headers(), timeout=15)
+    resp = _get_with_retry(url, headers=_headers(), timeout=30)
     if resp.status_code == 404:
         return "", None
     resp.raise_for_status()
@@ -78,7 +78,7 @@ def _commit_file(path: str, content_str: str, sha: str | None, message: str) -> 
     payload: dict = {"message": message, "content": encoded}
     if sha:
         payload["sha"] = sha
-    resp = _put_with_retry(url, headers=_headers(), json=payload, timeout=15)
+    resp = _put_with_retry(url, headers=_headers(), json=payload, timeout=30)
     resp.raise_for_status()
 
 
