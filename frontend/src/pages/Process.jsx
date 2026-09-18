@@ -3,6 +3,7 @@ import { wsUrl, uploadVideo, fetchJob, addLocation, deleteLocation } from "../ap
 import { LocationsContext } from "../App";
 
 const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024; // 50 MB — below this uses WebSocket live preview
+const CHUNK_SIZE = 1024 * 1024; // 1 MB slices for WebSocket streaming
 
 export default function Process() {
   const { locations, reload: reloadLocations } = useContext(LocationsContext);
@@ -180,7 +181,7 @@ export default function Process() {
     };
 
     ws.onerror = () => { setStatus("error"); setErrorMsg("Connection error. Please try again."); };
-    ws.onclose = () => { if (status !== "done") setStatus(s => s === "processing" ? s : "idle"); };
+    ws.onclose = () => { setStatus(s => (s === "done" || s === "error") ? s : "idle"); };
   }
 
   const THRESHOLD = 127;

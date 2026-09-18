@@ -12,28 +12,24 @@ import { isLoggedIn, verifySession, logout, fetchLocations } from "./api";
 export const LocationsContext = createContext({ locations: [], reload: () => {} });
 
 function RequireAuth({ children }) {
-  const [checked, setChecked] = useState(false);
-  const [valid, setValid] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!isLoggedIn()) {
-      setChecked(true);
-      setValid(false);
+      navigate("/login", { replace: true });
       return;
     }
+    // Verify in background; only evict on explicit 401, not on network errors
     verifySession().then((ok) => {
       if (!ok) {
         logout();
         navigate("/login", { replace: true });
       }
-      setValid(ok);
-      setChecked(true);
     });
   }, [navigate]);
 
-  if (!checked) return null;
-  return valid ? children : <Navigate to="/login" replace />;
+  // Render immediately if a token exists — avoids blank flash and race conditions
+  return isLoggedIn() ? children : <Navigate to="/login" replace />;
 }
 
 function AppLayout({ children }) {
