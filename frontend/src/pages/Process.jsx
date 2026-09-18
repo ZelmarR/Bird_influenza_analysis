@@ -2,8 +2,9 @@ import { useRef, useState, useEffect, useContext } from "react";
 import { wsUrl, uploadVideo, fetchJob, addLocation, deleteLocation } from "../api";
 import { LocationsContext } from "../App";
 
-const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024; // 50 MB — below this uses WebSocket live preview
-const CHUNK_SIZE = 1024 * 1024; // 1 MB slices for WebSocket streaming
+const LARGE_FILE_THRESHOLD = 50 * 1024 * 1024;
+const CHUNK_SIZE = 1024 * 1024;
+const THRESHOLD = 127;
 
 export default function Process() {
   const { locations, reload: reloadLocations } = useContext(LocationsContext);
@@ -170,7 +171,7 @@ export default function Process() {
       } else {
         let msg;
         try { msg = JSON.parse(event.data); } catch { return; }
-        if (msg.error) { setStatus("error"); setErrorMsg(msg.error); }
+        if ("error" in msg) { setStatus("error"); setErrorMsg(msg.error || "Processing failed."); }
         else if (msg.done) { setResult(msg); setStatus("done"); }
         else if ("progress" in msg) {
           setProgress(msg.progress);
@@ -184,7 +185,6 @@ export default function Process() {
     ws.onclose = () => { setStatus(s => (s === "done" || s === "error") ? s : "idle"); };
   }
 
-  const THRESHOLD = 127;
   const isRunning = status === "uploading" || status === "processing" || status === "queued";
   const pct = Math.round(progress * 100);
 
@@ -476,7 +476,7 @@ export default function Process() {
       {/* ── Error ── */}
       {status === "error" && (
         <div className="error-banner" style={{ marginBottom: 0 }}>
-          {errorMsg}
+          {errorMsg || "Processing failed. Please try again."}
         </div>
       )}
 
