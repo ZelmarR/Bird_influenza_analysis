@@ -4,6 +4,7 @@ import logging
 import os
 import tempfile
 import threading
+import time
 import uuid
 from datetime import datetime
 from typing import Any
@@ -150,36 +151,38 @@ async def process_video(websocket: WebSocket):
             await websocket.close(code=1003)
             return
 
-        # Receive video bytes in chunks
+        # Receive video bytes in chunks — write directly to disk, never accumulate in RAM
         suffix = os.path.splitext(filename)[1] or ".mp4"
-        video_bytes = bytearray()
+        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
         chunk_count = 0
+        total_bytes = 0
 
         log.debug("Receiving video chunks...")
-        while True:
-            msg = await websocket.receive()
-            if "bytes" in msg and msg["bytes"]:
-                video_bytes.extend(msg["bytes"])
-                chunk_count += 1
-                if chunk_count % 10 == 0:
-                    log.debug("  received %d chunks, %.1f MB so far", chunk_count, len(video_bytes) / 1e6)
-            elif "text" in msg:
-                signal = json.loads(msg["text"])
-                if signal.get("done"):
-                    log.info("Upload complete: %d chunks, %.1f MB total", chunk_count, len(video_bytes) / 1e6)
-                    break
+        try:
+            while True:
+                msg = await websocket.receive()
+                if "bytes" in msg and msg["bytes"]:
+                    tmp.write(msg["bytes"])
+                    total_bytes += len(msg["bytes"])
+                    chunk_count += 1
+                    if chunk_count % 10 == 0:
+                        log.debug("  received %d chunks, %.1f MB so far", chunk_count, total_bytes / 1e6)
+                elif "text" in msg:
+                    signal = json.loads(msg["text"])
+                    if signal.get("done"):
+                        log.info("Upload complete: %d chunks, %.1f MB total", chunk_count, total_bytes / 1e6)
+                        break
+        finally:
+            tmp.flush()
+            tmp.close()
 
-        if len(video_bytes) == 0:
+        if total_bytes == 0:
             log.error("Received 0 bytes — aborting")
+            os.unlink(tmp.name)
             await websocket.send_text(json.dumps({"error": "No video data received"}))
             return
 
-        # Write to temp file
-        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
         try:
-            tmp.write(bytes(video_bytes))
-            tmp.flush()
-            tmp.close()
             log.info("Temp file written: %s (%.1f MB)", tmp.name, os.path.getsize(tmp.name) / 1e6)
 
             # Verify OpenCV can open it before starting the generator
@@ -282,8 +285,25 @@ async def async_generator(sync_gen):
 
 # ── Chunked resumable upload ──────────────────────────────────────────────────
 # State: upload_id -> { tmp_path, filename, location, threshold, recorded_at,
-#                       user, total_chunks, received: set[int] }
+#                       user, total_chunks, file_size, received: set[int],
+#                       lock: threading.Lock, created_at: float }
 _uploads: dict[str, dict] = {}
+_uploads_lock = threading.Lock()
+_UPLOAD_TTL_SECONDS = 6 * 3600  # abandon stale sessions after 6 hours
+
+
+def _cleanup_stale_uploads() -> None:
+    """Remove upload sessions older than TTL and delete their temp files."""
+    now = time.time()
+    with _uploads_lock:
+        stale = [uid for uid, u in _uploads.items() if now - u["created_at"] > _UPLOAD_TTL_SECONDS]
+        for uid in stale:
+            try:
+                os.unlink(_uploads[uid]["tmp_path"])
+            except Exception:
+                pass
+            del _uploads[uid]
+            log.info("Cleaned up stale upload session %s", uid)
 
 
 class UploadInitBody(BaseModel):
@@ -316,18 +336,23 @@ def upload_init(request: Request, body: UploadInitBody):
         f.seek(body.file_size - 1)
         f.write(b"\x00")
 
+    _cleanup_stale_uploads()
+
     upload_id = str(uuid.uuid4())
-    _uploads[upload_id] = {
-        "tmp_path": tmp.name,
-        "filename": body.filename,
-        "location": body.location,
-        "threshold": max(50, min(220, body.threshold)),
-        "recorded_at": body.recorded_at or None,
-        "user": user,
-        "total_chunks": body.total_chunks,
-        "file_size": body.file_size,
-        "received": set(),
-    }
+    with _uploads_lock:
+        _uploads[upload_id] = {
+            "tmp_path": tmp.name,
+            "filename": body.filename,
+            "location": body.location,
+            "threshold": max(50, min(220, body.threshold)),
+            "recorded_at": body.recorded_at or None,
+            "user": user,
+            "total_chunks": body.total_chunks,
+            "file_size": body.file_size,
+            "received": set(),
+            "lock": threading.Lock(),
+            "created_at": time.time(),
+        }
     log.info("Upload init: upload_id=%s filename=%s total_chunks=%d", upload_id, body.filename, body.total_chunks)
     return {"upload_id": upload_id}
 
@@ -365,11 +390,12 @@ async def upload_chunk(
     # Write at correct byte offset — chunk_index * CHUNK_SIZE
     CHUNK_SIZE = 5 * 1024 * 1024  # 5 MB
     offset = chunk_index * CHUNK_SIZE
-    with open(upload["tmp_path"], "r+b") as f:
-        f.seek(offset)
-        f.write(data)
+    with upload["lock"]:
+        with open(upload["tmp_path"], "r+b") as f:
+            f.seek(offset)
+            f.write(data)
+        upload["received"].add(chunk_index)
 
-    upload["received"].add(chunk_index)
     log.debug("Chunk %d/%d received for upload %s", chunk_index + 1, upload["total_chunks"], upload_id)
     return {"upload_id": upload_id, "chunk_index": chunk_index, "received": len(upload["received"])}
 
