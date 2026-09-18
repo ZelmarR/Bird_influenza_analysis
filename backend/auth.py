@@ -2,11 +2,12 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import jwt as _jwt
+from jwt.exceptions import PyJWTError
 from pydantic import BaseModel, EmailStr
 
 from github_utils import download_users, upload_users
@@ -17,7 +18,6 @@ if not JWT_SECRET:
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 24
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer()
 router = APIRouter()
 
@@ -37,24 +37,27 @@ class LoginRequest(BaseModel):
 
 
 def _hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def _verify(password: str, hashed: str) -> bool:
-    return pwd_context.verify(password, hashed)
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
 
 
 def _create_token(email: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS)
-    return jwt.encode({"sub": email, "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return _jwt.encode({"sub": email, "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 def verify_token(token: str) -> str | None:
     """Return email if valid, None otherwise."""
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = _jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return payload.get("sub")
-    except JWTError:
+    except PyJWTError:
         return None
 
 
