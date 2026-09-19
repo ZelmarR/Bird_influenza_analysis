@@ -58,6 +58,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in ALLOWED_ORIGINS or "*" in ALLOWED_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    log.exception("Unhandled exception: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc) or "Internal server error"},
+        headers=headers,
+    )
+
 app.include_router(auth_router, prefix="/auth")
 
 # In-memory job store: job_id -> state dict
@@ -451,6 +466,22 @@ def get_job(job_id: str, user: str = Depends(get_current_user)):
     return job
 
 
+def _sanitize(obj):
+    """Recursively convert numpy scalars and other non-JSON-serializable types."""
+    import numpy as np
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(v) for v in obj]
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    return obj
+
+
 def _run_job(job_id: str, tmp_path: str, filename: str, location: str,
              threshold: int, user: str, recorded_at: str | None) -> None:
     _jobs[job_id]["status"] = "processing"
@@ -468,7 +499,8 @@ def _run_job(job_id: str, tmp_path: str, filename: str, location: str,
                 result = item["data"]
         if result:
             _save_result(result, filename, location, user=user, recorded_at=recorded_at)
-            _jobs[job_id].update({"status": "done", "result": result, "progress": 1.0})
+            safe_result = _sanitize(result)
+            _jobs[job_id].update({"status": "done", "result": safe_result, "progress": 1.0})
             log.info("Job %s done: %d unique birds", job_id, result.get("unique_flying_birds", 0))
         else:
             _jobs[job_id].update({"status": "error", "error": "Detection produced no result"})
