@@ -102,7 +102,7 @@ export function wsUrl() {
 }
 
 const UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB — must match backend CHUNK_SIZE
-const UPLOAD_MAX_RETRIES = 4;
+const UPLOAD_MAX_RETRIES = 8;
 
 async function _postForm(url, form) {
   const res = await fetch(`${BASE_URL}${url}`, { method: "POST", body: form });
@@ -148,7 +148,7 @@ export async function uploadVideo({ file, token, location, filename, threshold, 
       } catch (err) {
         lastErr = err;
         if (err.message.includes("Session expired")) throw err;
-        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
       }
     }
     if (!uploaded) throw lastErr;

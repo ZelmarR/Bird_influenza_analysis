@@ -19,7 +19,7 @@ export default function Process() {
   const [result,       setResult]       = useState(null);
   const [errorMsg,     setErrorMsg]     = useState("");
   const [dragOver,     setDragOver]     = useState(false);
-  const [jobId,        setJobId]        = useState(null);
+  const [jobId,        setJobId]        = useState(() => localStorage.getItem("activeJobId") || null);
   const [isLargeFile,  setIsLargeFile]  = useState(false);
   const [newLocName,   setNewLocName]   = useState("");
   const [locError,     setLocError]     = useState("");
@@ -64,6 +64,16 @@ export default function Process() {
     }
   }
 
+  // Persist jobId across tab switches and page refreshes
+  useEffect(() => {
+    if (jobId) {
+      localStorage.setItem("activeJobId", jobId);
+      if (status === "idle") setStatus("processing");
+    } else {
+      localStorage.removeItem("activeJobId");
+    }
+  }, [jobId]);
+
   // Poll job status for background jobs
   useEffect(() => {
     if (!jobId) return;
@@ -75,12 +85,16 @@ export default function Process() {
         setElapsed(job.elapsed || 0);
         if (job.status === "done") {
           clearInterval(pollRef.current);
+          localStorage.removeItem("activeJobId");
           setResult(job.result);
           setStatus("done");
         } else if (job.status === "error") {
           clearInterval(pollRef.current);
+          localStorage.removeItem("activeJobId");
           setStatus("error");
           setErrorMsg(job.error || "Processing failed.");
+        } else if (job.status === "queued") {
+          setStatus("queued");
         } else if (job.status === "processing") {
           setStatus("processing");
         }
@@ -124,7 +138,7 @@ export default function Process() {
 
   async function runDetection() {
     if (!file || !location) return;
-    setStatus("uploading"); setProgress(0); setResult(null); setErrorMsg(""); setJobId(null);
+    setStatus("uploading"); setProgress(0); setResult(null); setErrorMsg(""); setJobId(null); localStorage.removeItem("activeJobId");
     const token = localStorage.getItem("token") || "";
     const recorded_at = recordedDate && recordedTime
       ? `${recordedDate} ${recordedTime}`
