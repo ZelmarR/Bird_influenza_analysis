@@ -304,7 +304,7 @@ async def async_generator(sync_gen):
 #                       lock: threading.Lock, created_at: float }
 _uploads: dict[str, dict] = {}
 _uploads_lock = threading.Lock()
-_UPLOAD_TTL_SECONDS = 6 * 3600  # abandon stale sessions after 6 hours
+_UPLOAD_TTL_SECONDS = 48 * 3600  # abandon stale sessions after 48 hours (large files take time)
 
 
 def _cleanup_stale_uploads() -> None:

@@ -485,7 +485,7 @@ def process_video_streaming(video_path, threshold=None):
 
     first_detection_frame = None
     peak_concurrent_frame = 0
-    birds_confirmed_at_frame = []
+    birds_per_minute_counts: dict[int, int] = {}  # minute_index -> count
     prev_unique = 0
     total_motion_sum = 0.0
     total_motion_count = 0
@@ -543,7 +543,10 @@ def process_video_streaming(video_path, threshold=None):
                 peak_concurrent_frame = frame_count
 
             if unique_flying_birds > prev_unique:
-                birds_confirmed_at_frame.extend([frame_count] * (unique_flying_birds - prev_unique))
+                if fps > 0:
+                    minute_idx = int(frame_count / fps / 60)
+                    new_birds = unique_flying_birds - prev_unique
+                    birds_per_minute_counts[minute_idx] = birds_per_minute_counts.get(minute_idx, 0) + new_birds
                 prev_unique = unique_flying_birds
 
             for det in moving_detections:
@@ -581,7 +584,13 @@ def process_video_streaming(video_path, threshold=None):
 
             if frame_count % (100 * FRAME_SKIP) == 0:
                 elapsed = time.time() - start_time
-                progress = frame_count / total_frames if total_frames > 0 else 0
+                if total_frames > 0:
+                    progress = frame_count / total_frames
+                elif elapsed > 0:
+                    # Estimate progress from processing speed vs typical throughput
+                    progress = min(0.99, frame_count / max(1, frame_count + 500))
+                else:
+                    progress = 0
                 yield {
                     "kind": "progress",
                     "progress": round(progress, 4),
@@ -595,13 +604,8 @@ def process_video_streaming(video_path, threshold=None):
                  unique_flying_birds, frame_count, total_time,
                  frame_count / total_time if total_time > 0 else 0)
 
-        minute_counts = []
-        if fps > 0 and total_frames > 0:
-            total_minutes = int(total_frames / fps / 60) + 1
-            for m in range(total_minutes):
-                start_f = m * 60 * fps
-                end_f = (m + 1) * 60 * fps
-                minute_counts.append(sum(1 for f in birds_confirmed_at_frame if start_f <= f < end_f))
+        total_minutes = (int(frame_count / fps / 60) + 1) if fps > 0 else 0
+        minute_counts = [birds_per_minute_counts.get(m, 0) for m in range(total_minutes)]
 
         yield {
             "kind": "result",
@@ -612,7 +616,7 @@ def process_video_streaming(video_path, threshold=None):
                 "total_tracks": bird_tracker.track_id,
                 "fps": fps,
                 "total_frames": total_frames,
-                "duration_seconds": total_frames / fps if fps > 0 else 0,
+                "duration_seconds": (total_frames / fps) if (fps > 0 and total_frames > 0) else round(total_time, 1),
                 "processing_time": round(total_time, 1),
                 "processing_speed": round(frame_count / total_time, 2) if total_time > 0 else 0,
                 "first_detection_second": round(first_detection_frame / fps, 1) if first_detection_frame and fps > 0 else None,

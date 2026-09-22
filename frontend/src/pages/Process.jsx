@@ -188,6 +188,15 @@ export default function Process() {
   const isRunning = status === "uploading" || status === "processing" || status === "queued";
   const pct = Math.round(progress * 100);
 
+  function fmtElapsed(s) {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = Math.round(s % 60);
+    if (h > 0) return `${h}h ${m}m elapsed`;
+    if (m > 0) return `${m}m ${sec}s elapsed`;
+    return `${sec}s elapsed`;
+  }
+
   return (
     <div className="page">
 
@@ -373,7 +382,7 @@ export default function Process() {
               <div className="progress-meta">
                 <span>{pct}% complete</span>
                 <span>{uniqueBirds} bird{uniqueBirds !== 1 ? "s" : ""} detected</span>
-                <span>{Math.floor(elapsed / 60)}m {Math.round(elapsed % 60)}s elapsed</span>
+                <span>{fmtElapsed(elapsed)}</span>
               </div>
               <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
                 Processing in background — this page polls every 5 s. Safe to close and check Analysis later.
@@ -429,7 +438,7 @@ export default function Process() {
               <div className="progress-meta">
                 <span>{pct}% complete</span>
                 <span>{uniqueBirds} bird{uniqueBirds !== 1 ? "s" : ""} detected</span>
-                <span>{Math.floor(elapsed / 60)}m {Math.round(elapsed % 60)}s elapsed</span>
+                <span>{fmtElapsed(elapsed)}</span>
               </div>
             </div>
           )}
