@@ -2,20 +2,29 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import screenshot from "../assets/screenshot.png";
+import eastImg from "../assets/east.jpeg";
+import westImg from "../assets/west.jpeg";
+import northImg from "../assets/north.jpeg";
+import farm1 from "../assets/farm1.jpg";
+import farm2 from "../assets/farm2.webp";
 
 const GALLERY_ITEMS = [
   {
-    src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8AIgtpQr1ngVvdFGZWJ0QwZpmoqx3ZBQJLPZjv6IoGRaZziUnmR3JlqkL&s=10",
-    caption: "Field Observation Site",
+    src: westImg,
+    caption: "West side of the Dairy Cattle Teaching and Research Facility, MSU",
   },
   {
-    src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQkB58PJhdxMGHuH1tBjN3K9Q_naEqXtbnjFO58aNDjyUbGMkfX9Q1fiBNt&s=10",
-    caption: "Flock Movement Study",
+    src: northImg,
+    caption: "North side",
   },
   {
-    src: "https://cvm.msu.edu/assets/images/hospital/_imageFit650/anesthesia.jpg",
-    caption: "MSU CVM Laboratory",
+    src: farm1,
+    caption: "",
   },
+  {
+    src: farm2,
+    caption: "",
+  }
 ];
 
 export default function Landing() {
@@ -103,7 +112,7 @@ export default function Landing() {
       </section>
 
       {/* ── Gallery ── */}
-      <section style={{ background: "var(--charcoal)", padding: "0" }}>
+      <section style={{ background: "var(--charcoal)", padding: "32px 0" }}>
         <div className="gallery-strip">
           {GALLERY_ITEMS.map(({ src, caption }) => (
             <div key={caption} className="gallery-item">

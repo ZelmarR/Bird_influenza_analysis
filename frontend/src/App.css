@@ -991,11 +991,20 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
 .gallery-strip {
   display: flex;
   gap: 16px;
-  overflow: hidden;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 0 28px;
+  box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+.gallery-strip::-webkit-scrollbar {
+  display: none;
 }
 
 .gallery-item {
   flex: 0 0 calc(33.33% - 11px);
+  scroll-snap-align: start;
   position: relative;
   border-radius: 6px;
   overflow: hidden;
