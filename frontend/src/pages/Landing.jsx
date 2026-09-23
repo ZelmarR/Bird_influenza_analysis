@@ -50,18 +50,19 @@ export default function Landing() {
       <section className="hero">
         {/* Left: copy */}
         <div style={{ animation: "fadeUp 0.7s ease both" }}>
-          <div className="hero-eyebrow">Agricultural bird damage — automated monitoring</div>
+          <div className="hero-eyebrow">Wild bird activity — automated monitoring</div>
           <h1 className="hero-h1">
-            Know when birds<br />
-            hit the <em>farm.</em>
+            Know how bird activity<br />
+            changes over <em>time</em>
           </h1>
           <p className="hero-p">
-            Birds cause significant crop losses on farms — flocking at feeding times,
-            concentrating at specific field locations, and returning in predictable patterns.
-            To deploy effective diversions, farmers and researchers first need hard numbers:
-            how many birds, at which locations, and at what times of day.
-            This system processes field camera recordings to deliver exactly that,
-            automatically — no manual review required.
+            The Wild Bird Activity Monitor was created to provide a consistent
+             and repeatable measure of wild bird activity. Because bird activity 
+             can vary substantially across days, times, and locations, occasional observations 
+             may not capture meaningful patterns. The system uses repeated camera recordings to 
+             calculate a Bird Activity Index based on automated detections per unit of video time, 
+             allowing users to establish baseline activity, track changes over time, compare locations, 
+             and evaluate patterns associated with environmental conditions or management practices.
           </p>
           <div className="hero-ctas">
             <Link to="/login" className="cta-primary">
@@ -76,9 +77,9 @@ export default function Landing() {
           {/* Tiny proof points */}
           <div style={{ display: "flex", gap: 24, marginTop: 36, flexWrap: "wrap" }}>
             {[
-              ["Any location", "farmer-defined sites"],
-              ["Time & count", "quantified activity"],
-              ["Per-user", "isolated data"],
+              ["Track activity", "see changes over time"],
+              ["Compare sites", "monitor multiple locations"],
+              ["Explore your data", "summary plots and raw dataset"],
             ].map(([top, bot]) => (
               <div key={top} style={{ borderLeft: "2px solid var(--sage-mid)", paddingLeft: 12 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--charcoal)" }}>{top}</div>
@@ -117,28 +118,29 @@ export default function Landing() {
 
       {/* ── Method ── */}
       <section className="landing-section">
-        <div className="section-eyebrow">The problem — and the solution</div>
+        <div className="section-eyebrow">How it works</div>
         <h2 className="section-title">
           Quantify first.<br />Divert smarter.
         </h2>
         <p className="section-body">
-          Bird damage to crops is a real and costly problem for farms. Flocks arrive
-          at predictable times, concentrate at specific field locations, and can consume
-          or contaminate large portions of a harvest before a farmer can respond.
-          Conventional deterrents — noise cannons, reflective tape, netting — are only
-          effective when deployed at the right place and the right time. Without data,
-          farmers are guessing. This platform turns field camera footage into precise,
-          per-location activity records: how many birds arrived, when during the day,
-          and how that pattern shifts over the season. With that evidence in hand,
-          diversionary measures can be targeted rather than scattered.
+          To use the Wild Bird Activity Monitor, collect repeated skyline recordings from the same location. 
+          Upload the recordings to the app, which will automatically process the videos and generate summary plots 
+          of time-standardized detections and bird activity patterns. 
+          You can also download the underlying raw dataset for further analysis. 
+          Over time, repeated recordings will begin to reveal consistent patterns in bird activity and show how activity
+          changes across days and locations.
+          We recommend starting with at least 30 minutes of video per day for one week, and you can monitor up to
+          five locations at a time. Longer recordings and more frequent sampling provide more information and may 
+          allow a stable Bird Activity Index to be reached sooner. However, locations with highly variable bird activity
+          may require additional days of recording to adequately capture normal day-to-day variation.
         </p>
 
         <div className="steps">
           {[
-            { n: "01", title: "Set up cameras at key locations", desc: "Place a camera at each spot on the farm where bird activity is suspected — feed stores, open crop rows, water sources. Each location is tracked separately so you can compare activity levels across the farm." },
-            { n: "02", title: "Record and upload footage", desc: "Capture a video clip at each location and upload it here. Enter the recording date and start time so activity can be plotted accurately on the timeline." },
-            { n: "03", title: "Automated detection runs", desc: "The system uses optical flow and multi-object tracking to detect and count flying birds frame by frame — no manual tagging needed." },
-            { n: "04", title: "Act on the data", desc: "Results show bird counts, peak arrival times, and activity trends per location. Use this to position diversions where and when they will have the greatest effect." },
+            { n: "01", title: "Set up cameras at key locations", desc: "Place a camera with a clear view of the skyline at each location you want to monitor. Keep the camera position consistent across recordings so activity can be compared over time. Up to five locations can be monitored separately." },
+            { n: "02", title: "Record and upload footage", desc: "Collect repeated video recordings from each location and upload them to the app. Enter the recording date and start time so detections can be standardized by video duration and evaluated over time." },
+            { n: "03", title: "Automated detection runs", desc: "The system automatically detects and tracks flying birds throughout each recording. These detections are standardized by video time to generate a Bird Activity Index for each recording and location."},
+            { n: "04", title: "Explore activity patterns", desc: "Review summary plots to see how bird activity changes over time and across locations. As repeated recordings accumulate, you can identify baseline activity, recurring patterns, and periods of increased or decreased activity. The underlying detection data can also be downloaded for further analysis. " },
           ].map(({ n, title, desc }) => (
             <div key={n} className="step">
               <div className="step-num">{n}</div>

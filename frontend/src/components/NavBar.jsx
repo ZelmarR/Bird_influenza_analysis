@@ -8,6 +8,8 @@ const LINKS = [
   { to: "/app/timeline", label: "Timeline" },
 ];
 
+const QUESTIONS_URL = "https://www.drivelabresearch.com/contact-us";
+
 export default function NavBar() {
   const navigate  = useNavigate();
   const { pathname } = useLocation();
@@ -27,6 +29,15 @@ export default function NavBar() {
           {label}
         </Link>
       ))}
+
+      <a
+        href={QUESTIONS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="nav-link"
+      >
+        Questions
+      </a>
 
       <button className="nav-logout" onClick={() => { logout(); navigate("/login"); }}>
         Sign out

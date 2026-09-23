@@ -219,14 +219,13 @@ export default function Process() {
         <div className="page-eyebrow">Detection pipeline</div>
         <h1 className="page-title">Process a Recording</h1>
         <p className="page-subtitle">
-          Upload a field video and the system will automatically count every flying bird,
-          measure peak activity, and save the results to your location's record.
+          Upload a video and the system will automatically detect and track flying birds,
+          calculate bird activity metrics, and save the results to your selected monitoring location.
         </p>
         <p className="page-subtitle" style={{ marginTop: 10 }}>
-          Birds cause crop losses by arriving at predictable spots and times.
-          Recording footage at each vulnerable location — feed areas, open crop rows,
-          water sources — and processing it here builds the evidence you need to deploy
-          deterrents where and when they will actually work.
+          For consistent monitoring, record a clear view of the skyline from the same location over time.
+          Repeated recordings allow the Bird Activity Index and other activity measures to be compared
+          across days, times, and locations, helping reveal patterns and changes in bird activity.
         </p>
       </div>
 

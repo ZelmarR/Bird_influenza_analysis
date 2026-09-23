@@ -27,29 +27,26 @@ export default function Home() {
               times, and builds a growing record per location — giving you the evidence to position
               diversions where and when they will have the greatest effect.
             </p>
-            <p style={{ marginTop: 10, color: "rgba(255,255,255,0.45)", fontWeight: 500, fontSize: 12 }}>
-              Note: This tool measures activity patterns — not an exact bird census.
-            </p>
             <ul className="home-hero-bullets">
               <li>
-                <span className="bullet-label">Birds per unit time</span>
-                <span className="bullet-desc">Estimated hourly bird activity rate, derived from per-minute counts averaged across 5-minute windows and extrapolated to an hour.</span>
+                <span className="bullet-label">Bird Activity Index</span>
+                <span className="bullet-desc">Standardized bird detections standardized per hour of video. Higher values indicate greater observed bird activity and can be compared across recordings, times, and locations. This tool was designed to measure relative bird activity patterns, not to estimate the exact number of birds present. Thus, the resulting values should be interpreted as an activity index rather than as a bird count.</span>
               </li>
               <li>
-                <span className="bullet-label">Max concurrent birds</span>
-                <span className="bullet-desc">The highest number of birds observed simultaneously within a single video frame — a proxy for peak flock density at the site.</span>
+                <span className="bullet-label">Peak concurrent activity</span>
+                <span className="bullet-desc">The maximum number of birds detected simultaneously within a single video frame, providing a measure of peak flock activity during the recording.</span>
               </li>
               <li>
-                <span className="bullet-label">First detection latency</span>
-                <span className="bullet-desc">Seconds from the start of the recording until the first confirmed flying bird appears. Shorter latency suggests active sites or well-placed cameras.</span>
+                <span className="bullet-label">Time to first detection</span>
+                <span className="bullet-desc">The time from the start of the recording until the first confirmed flying bird is detected. Shorter times indicate that bird activity was detected earlier in the recording.</span>
               </li>
               <li>
                 <span className="bullet-label">Track noise ratio</span>
-                <span className="bullet-desc">Ratio of confirmed flying birds to total motion candidates (0 – 1). Values closer to 1.0 indicate a cleaner signal with fewer false positives from wind, foliage, or insects.</span>
+                <span className="bullet-desc">The proportion of motion candidates classified as confirmed flying birds. Higher values indicate a cleaner detection signal with fewer false-positive tracks.</span>
               </li>
               <li>
                 <span className="bullet-label">Average motion score</span>
-                <span className="bullet-desc">Mean pixel displacement per frame across all detected bird regions via optical flow. Higher values reflect faster-moving birds or stronger environmental movement.</span>
+                <span className="bullet-desc">The average movement of detected bird regions between video frames. This provides additional information about the movement characteristics of detected activity.</span>
               </li>
             </ul>
           </div>
@@ -103,27 +100,27 @@ export default function Home() {
               {
                 n: "Step 01",
                 title: "Record the video",
-                desc: "Position the camera at the fixed monitoring site. Record a continuous .mp4, .avi, or .mov clip — 10–30 minutes is ideal. Ensure the sky and bird flight path are clearly in frame and the camera is stable.",
+                desc: "Position the camera at a fixed monitoring location with a clear view of the skyline and bird flight path. Keep the camera position as consistent as possible across repeated recordings. We recommend at least 30 minutes of video per day.",
               },
               {
                 n: "Step 02",
                 title: "Add and select a location",
-                desc: "On the Process page, add each camera site by name — anything that identifies the spot, like 'North Field', 'Feed Barn', or 'Gate Row'. Select the location that matches this recording, then enter the date and start time.",
+                desc: "Create a monitoring location and give it a recognizable name. Select the location that corresponds to the recording, then enter the recording date and start time.",
               },
               {
                 n: "Step 03",
-                title: "Upload video",
-                desc: "Drag your video file into the upload area or click to browse. The file is streamed to the server in 1 MB chunks so large files upload reliably on slow connections.",
+                title: "Upload the video",
+                desc: "Upload your recording by dragging the video into the upload area or selecting the file from your device. The system will process the recording automatically.",
               },
               {
                 n: "Step 04",
-                title: "Live detection",
-                desc: "Adaptive thresholding and optical flow run frame-by-frame on the server. Annotated frames stream back in real time — confirmed flying birds appear highlighted in red bounding boxes.",
+                title: "Automated detection",
+                desc: "The system analyzes the video frame by frame to detect and track flying birds. Detected birds can be viewed in the annotated video as processing progresses.",
               },
               {
                 n: "Step 05",
-                title: "Results saved",
-                desc: "Once processing completes, unique bird count, peak concurrency, first detection latency, noise ratio, and motion score are saved automatically to your account under the correct location.",
+                title: "Review your results",
+                desc: "Once processing is complete, the results are added to the record for that monitoring location. The app calculates the Bird Activity Index and additional activity and detection-quality metrics, allowing you to follow and compare patterns across repeated recordings over time.",
               },
             ].map(({ n, title, desc }) => (
               <div key={n} className="workflow-step">
@@ -133,6 +130,38 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* ── Research behind the tool ── */}
+      <div style={{ borderTop: "1px solid var(--border-light)", padding: "32px 28px" }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 8 }}>
+              Research behind the tool
+            </div>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0, maxWidth: 580, lineHeight: 1.6 }}>
+              This tool was developed as part of ongoing research on automated bird activity monitoring for agricultural applications. The detection pipeline and activity metrics are described in detail in the associated preprint.
+            </p>
+          </div>
+          <a
+            href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7261331"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-block",
+              padding: "10px 20px",
+              background: "var(--sage-light)",
+              color: "var(--charcoal)",
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Read the preprint →
+          </a>
         </div>
       </div>
     </div>
