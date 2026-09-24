@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import screenshot from "../assets/screenshot.png";
+import driveLogo from "../assets/vite.svg";
 import eastImg from "../assets/east.jpeg";
 import westImg from "../assets/west.jpeg";
 import northImg from "../assets/north.jpeg";
@@ -44,8 +45,11 @@ export default function Landing() {
 
       {/* ── Navigation ── */}
       <nav ref={navRef} className="landing-nav">
-        <span className="landing-brand">Bird<em> Counter</em></span>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <span className="landing-brand">Wild Bird Activity<em> Monitor</em></span>
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <a href="https://www.drivelabresearch.com/" target="_blank" rel="noopener noreferrer">
+            <img src={driveLogo} alt="DRIVE Lab" style={{ height: 30, width: "auto", display: "block" }} />
+          </a>
           <Link to="/login" style={{ fontSize: 13, color: "var(--text-secondary)", textDecoration: "none", fontWeight: 500 }}>
             Sign in
           </Link>
@@ -185,7 +189,7 @@ export default function Landing() {
 
       {/* ── Footer ── */}
       <footer className="landing-footer">
-        Bird Counter · MSU College of Veterinary Medicine · Agricultural bird damage research
+        Wild Bird Activity Monitor · DRIVE Lab · drivelabresearch.com · Michigan State University · College of Veterinary Medicine
       </footer>
     </div>
   );

@@ -14,6 +14,7 @@ export function isLoggedIn() {
 
 export function logout() {
   localStorage.removeItem("token");
+  localStorage.removeItem("activeJobId");
 }
 
 export async function verifySession() {
@@ -45,6 +46,7 @@ export async function login(email, password) {
   }
   const data = await res.json();
   localStorage.setItem("token", data.access_token);
+  localStorage.removeItem("activeJobId");
 }
 
 export async function register(email, password, name = "", department = "") {

@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../api";
+import driveLogo from "../assets/vite.svg";
 
 const LINKS = [
   { to: "/app/home",     label: "Overview" },
@@ -17,7 +18,7 @@ export default function NavBar() {
   return (
     <nav className="navbar">
       <Link to="/app/home" className="navbar-brand">
-        Bird<span> Counter</span>
+        Wild Bird Activity <span> Monitor</span>
       </Link>
 
       {LINKS.map(({ to, label }) => (
@@ -38,10 +39,14 @@ export default function NavBar() {
       >
         Questions
       </a>
-
-      <button className="nav-logout" onClick={() => { logout(); navigate("/login"); }}>
-        Sign out
-      </button>
+      <a
+        href="https://www.drivelabresearch.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}
+      >
+        <img src={driveLogo} alt="DRIVE Lab" style={{ height: 32, width: "auto" }} />
+      </a>
     </nav>
   );
 }

@@ -252,7 +252,7 @@ function LocationTab({ location }) {
               <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={11} fill="var(--text-muted)" />
             </XAxis>
             <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} allowDecimals={false}>
-              <Label value="Count (birds)" angle={-90} position="insideLeft" offset={10} dy={55} fontSize={11} fill="var(--text-muted)" />
+              <Label value="Unique bird tracks" angle={-90} position="insideLeft" offset={10} dy={55} fontSize={11} fill="var(--text-muted)" />
             </YAxis>
             <Tooltip formatter={(v, name) => [v, name]} contentStyle={{ borderRadius: 4, border: "1px solid var(--border)", fontSize: 12 }} />
             <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8, fontSize: 12 }} />
@@ -273,7 +273,7 @@ function LocationTab({ location }) {
               <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={11} fill="var(--text-muted)" />
             </XAxis>
             <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} allowDecimals={false}>
-              <Label value="Count (birds)" angle={-90} position="insideLeft" offset={10} dy={55} fontSize={11} fill="var(--text-muted)" />
+              <Label value="Peak concurrent bird detections" angle={-90} position="insideLeft" offset={10} dy={55} fontSize={11} fill="var(--text-muted)" />
             </YAxis>
             <Tooltip formatter={(v, name) => [v, name]} contentStyle={{ borderRadius: 4, border: "1px solid var(--border)", fontSize: 12 }} />
             <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8, fontSize: 12 }} />
@@ -284,7 +284,7 @@ function LocationTab({ location }) {
 
       {/* Chart 3 */}
       <ChartSection
-        title="Estimated Birds Per Hour — Per Video"
+        title="Bird activity index per hour"
         description="Extrapolated hourly rate: bird counts are averaged across 5-minute windows, then multiplied by 12. Useful for comparing activity intensity across sessions."
       >
         {bphData.length === 0 ? (
@@ -299,7 +299,7 @@ function LocationTab({ location }) {
                 <Label value="Recording Date / Time" position="insideBottom" offset={-50} fontSize={11} fill="var(--text-muted)" />
               </XAxis>
               <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} allowDecimals={false}>
-                <Label value="Birds per hour (est.)" angle={-90} position="insideLeft" offset={10} dy={70} fontSize={11} fill="var(--text-muted)" />
+                <Label value="Bird Activity Index (detections/hour)" angle={-90} position="insideLeft" offset={10} dy={70} fontSize={11} fill="var(--text-muted)" />
               </YAxis>
               <Tooltip formatter={(v) => [`${v} birds/hr`, "Estimated Rate"]} contentStyle={{ borderRadius: 4, border: "1px solid var(--border)", fontSize: 12 }} />
               <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 8, fontSize: 12 }} />
@@ -391,8 +391,15 @@ export default function Analysis() {
         <div className="page-eyebrow">Observation data</div>
         <h1 className="page-title">Analysis</h1>
         <p className="page-subtitle">
-          Review bird detection results per location. Hover column headers for metric explanations.
+          The dashboard summarizes several measures of bird activity from each recording:
         </p>
+        <ul style={{ color: "var(--text-muted)", fontSize: 14, lineHeight: 1.8, marginTop: 12, paddingLeft: 20, maxWidth: 680 }}>
+          <li><strong style={{ color: "var(--charcoal)" }}>Bird Activity Index</strong> — standardized bird detections per unit of video time.</li>
+          <li><strong style={{ color: "var(--charcoal)" }}>Peak concurrent activity</strong> — the maximum number of birds detected at the same time in a single frame.</li>
+          <li><strong style={{ color: "var(--charcoal)" }}>Unique bird tracks</strong> — the number of distinct bird tracks identified during a recording.</li>
+          <li><strong style={{ color: "var(--charcoal)" }}>Time to first detection</strong> — how long into the recording the first bird was detected.</li>
+          <li><strong style={{ color: "var(--charcoal)" }}>Detection quality metrics</strong> — additional measures, such as track noise and motion, that help describe the reliability and characteristics of the detections.</li>
+        </ul>
       </div>
 
       {locations.length === 0 ? (

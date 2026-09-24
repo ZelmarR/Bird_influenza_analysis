@@ -51,8 +51,8 @@ export default function Login() {
             Automated avian<br />detection research.
           </div>
           <div className="login-visual-sub">
-            Upload field recordings and instantly get bird counts, motion metrics,
-            and longitudinal trend analysis — no manual review required.
+            Upload field recordings and instantly quantify bird movements, motion metrics,
+            and longitudinal trend analysis.
           </div>
           <div style={{ display: "flex", gap: 20, marginTop: 28, flexWrap: "wrap" }}>
             {[["3", "Locations"], ["CV", "Engine"], ["GitHub", "Storage"]].map(([v, l]) => (
@@ -68,9 +68,8 @@ export default function Login() {
       {/* ── Form side ── */}
       <div className="login-form-side">
         <div className="login-form-inner">
-          <div className="login-brand">Bird<em> Counter</em></div>
+          <div className="login-brand"> Wild Bird Activity<em> Monitor</em></div>
           <div className="login-tagline">MSU College of Veterinary Medicine</div>
-
           {/* Mode toggle */}
           <div className="mode-toggle">
             {["login", "register"].map(m => (
@@ -88,13 +87,10 @@ export default function Login() {
             {mode === "register" && (
               <>
                 <div className="form-field">
-                  <label>Full name</label>
+                  <label>User Name</label>
                   <input type="text" required value={name} onChange={e => setName(e.target.value)} placeholder="Name" />
                 </div>
-                <div className="form-field">
-                  <label>Department</label>
-                  <input type="text" required value={department} onChange={e => setDepartment(e.target.value)} placeholder="Epidemiology, etc" />
-                </div>
+            
               </>
             )}
 
@@ -129,7 +125,7 @@ export default function Login() {
           </form>
 
           <div style={{ marginTop: 20, fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6 }}>
-            By signing in you agree to use this platform solely for MSU CVM research purposes.
+            MSU College of Veterinary Medicine by Wild Bird Activity Monitor DRIVE lab - College of Veterinary Medicine <br/> Michigan State University
           </div>
         </div>
       </div>
