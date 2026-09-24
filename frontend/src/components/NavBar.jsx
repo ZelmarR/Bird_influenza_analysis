@@ -6,7 +6,6 @@ const LINKS = [
   { to: "/app/home",     label: "Overview" },
   { to: "/app/process",  label: "Process Recording" },
   { to: "/app/analysis", label: "Analysis" },
-  { to: "/app/timeline", label: "Timeline" },
 ];
 
 const QUESTIONS_URL = "https://www.drivelabresearch.com/contact-us";

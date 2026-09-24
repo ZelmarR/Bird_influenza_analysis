@@ -1560,3 +1560,231 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
 .form-group input { border: 1px solid var(--border); border-radius: 4px; background: #fff; }
 table { composes: data-table; }
 th { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; }
+
+/* ── Mobile / small-screen responsive ──────────────────────── */
+@media (max-width: 640px) {
+
+  /* Global page padding */
+  .page {
+    padding: 24px 16px 48px;
+  }
+
+  /* Navbar */
+  .navbar {
+    padding: 0 16px;
+    gap: 2px;
+  }
+  .navbar-brand {
+    font-size: 14px;
+    margin-right: 8px;
+  }
+  .nav-link {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+  .nav-logout {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  /* Landing nav */
+  .landing-nav {
+    padding: 0 16px;
+    height: 50px;
+  }
+  .landing-brand {
+    font-size: 15px;
+  }
+
+  /* Hero */
+  .hero {
+    padding: 80px 16px 40px;
+    gap: 32px;
+  }
+  .hero-h1 {
+    font-size: clamp(28px, 8vw, 40px);
+  }
+  .hero-p {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .hero-ctas {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .cta-primary, .cta-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Gallery strip — show one item at a time on mobile */
+  .gallery-item {
+    flex: 0 0 80%;
+  }
+
+  /* Landing section */
+  .landing-section {
+    padding: 48px 16px;
+  }
+  .section-title {
+    font-size: 26px;
+  }
+  .section-body {
+    font-size: 14px;
+  }
+
+  /* Steps grid — single column */
+  .steps {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  /* CTA band logos */
+  .landing-footer {
+    padding: 20px 16px;
+    font-size: 11px;
+  }
+
+  /* Home hero */
+  .home-hero {
+    padding: 32px 16px;
+  }
+  .home-hero-title {
+    font-size: 24px;
+  }
+  .home-hero-sub {
+    font-size: 13px;
+  }
+
+  /* Action tiles — stack vertically */
+  .action-rail {
+    grid-template-columns: 1fr;
+  }
+  .action-tile {
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+    padding: 20px 16px;
+  }
+  .action-tile:last-child {
+    border-bottom: none;
+  }
+
+  /* Workflow steps */
+  .workflow {
+    grid-template-columns: 1fr;
+  }
+  .workflow-step {
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .workflow-step:last-child {
+    border-bottom: none;
+  }
+
+  /* Tabs — allow horizontal scroll */
+  .tab-rail {
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .tab-rail::-webkit-scrollbar { display: none; }
+  .tab-item {
+    white-space: nowrap;
+    padding: 10px 14px;
+    font-size: 12px;
+  }
+
+  /* Stat row — stack cells */
+  .stat-row {
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  /* Data table — horizontal scroll */
+  .panel > div > .data-table,
+  .data-table {
+    min-width: 600px;
+  }
+
+  /* Location grid — 3 per row stays, but smaller */
+  .location-grid {
+    flex-wrap: wrap;
+  }
+  .loc-btn {
+    flex: 1 1 calc(33% - 8px);
+    min-width: 64px;
+  }
+
+  /* Login */
+  .login-form-side {
+    padding: 40px 20px;
+  }
+
+  /* Panel */
+  .panel {
+    padding: 16px;
+  }
+
+  /* Page title */
+  .page-title {
+    font-size: 26px;
+  }
+
+  /* Chart sections — reduce chart height */
+  .chart-section .recharts-responsive-container,
+  .chart-section > div {
+    min-height: 0;
+  }
+
+  /* Detection viewport — full width on mobile */
+  .detection-viewport {
+    border-radius: 4px;
+  }
+
+  /* Ensure data tables scroll horizontally inside their panel */
+  .panel > div[style*="overflow"] {
+    overflow-x: auto !important;
+  }
+}
+
+/* ── Tablet (641px – 900px) ─────────────────────────────────── */
+@media (min-width: 641px) and (max-width: 900px) {
+
+  .page {
+    padding: 32px 20px 48px;
+  }
+
+  .hero {
+    padding: 90px 28px 48px;
+    gap: 40px;
+  }
+
+  .landing-section {
+    padding: 56px 28px;
+  }
+
+  .home-hero {
+    padding: 40px 24px;
+  }
+
+  .action-rail {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .steps {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+
+  .stat-row {
+    flex-wrap: wrap;
+  }
+  .stat-cell {
+    flex: 1 1 calc(50% - 1px);
+  }
+
+  .tab-item {
+    padding: 10px 14px;
+    font-size: 12px;
+  }
+}

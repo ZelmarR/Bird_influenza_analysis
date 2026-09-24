@@ -11,7 +11,7 @@ export default function Home() {
         <div className="home-hero-split">
           {/* Left: text */}
           <div className="home-hero-text">
-            <div className="home-hero-eyebrow">MSU CVM · Agricultural bird damage monitoring</div>
+            <div className="home-hero-eyebrow">MSU CVM · Drive Lab Research</div>
             <h1 className="home-hero-title">
               Field Research <em>Station</em>
             </h1>
@@ -31,7 +31,7 @@ export default function Home() {
             <ul className="home-hero-bullets">
               <li>
                 <span className="bullet-label">Bird Activity Index</span>
-                <span className="bullet-desc">Standardized bird detections standardized per hour of video. Higher values indicate greater observed bird activity and can be compared across recordings, times, and locations. This tool was designed to measure relative bird activity patterns, not to estimate the exact number of birds present. Thus, the resulting values should be interpreted as an activity index rather than as a bird count.</span>
+                <span className="bullet-desc">Standardized bird detections standardized per hour of video. Higher values indicate greater observed bird activity and can be compared across recordings, times, and locations.<br/> This tool was designed to measure relative bird activity patterns, not to estimate the exact number of birds present. Thus, the resulting values should be interpreted as an activity index rather than as a bird count.</span>
               </li>
               <li>
                 <span className="bullet-label">Peak concurrent activity</span>
@@ -96,40 +96,19 @@ export default function Home() {
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 16 }}>
             Detection workflow
           </div>
-          <div className="workflow workflow-5">
-            {[
-              {
-                n: "Step 01",
-                title: "Record the video",
-                desc: "Position the camera at a fixed monitoring location with a clear view of the skyline and bird flight path. Keep the camera position as consistent as possible across repeated recordings. We recommend at least 30 minutes of video per day.",
-              },
-              {
-                n: "Step 02",
-                title: "Add and select a location",
-                desc: "Create a monitoring location and give it a recognizable name. Select the location that corresponds to the recording, then enter the recording date and start time.",
-              },
-              {
-                n: "Step 03",
-                title: "Upload the video",
-                desc: "Upload your recording by dragging the video into the upload area or selecting the file from your device. The system will process the recording automatically.",
-              },
-              {
-                n: "Step 04",
-                title: "Automated detection",
-                desc: "The system analyzes the video frame by frame to detect and track flying birds. Detected birds can be viewed in the annotated video as processing progresses.",
-              },
-              {
-                n: "Step 05",
-                title: "Review your results",
-                desc: "Once processing is complete, the results are added to the record for that monitoring location. The app calculates the Bird Activity Index and additional activity and detection-quality metrics, allowing you to follow and compare patterns across repeated recordings over time.",
-              },
-            ].map(({ n, title, desc }) => (
-              <div key={n} className="workflow-step">
-                <div className="workflow-step-n">{n}</div>
-                <div className="workflow-step-title">{title}</div>
-                <div className="workflow-step-desc">{desc}</div>
-              </div>
-            ))}
+          <div className="steps">
+          {[
+            { n: "01", title: "Set up cameras at key locations", desc: "Place a camera with a clear view of the skyline at each location you want to monitor. Keep the camera position consistent across recordings so activity can be compared over time. Up to five locations can be monitored separately." },
+            { n: "02", title: "Record and upload footage", desc: "Collect repeated video recordings from each location and upload them to the app. Enter the recording date and start time, create the location or choose from the locations you have added." },
+            { n: "03", title: "Automated detection runs", desc: "The system automatically detects and tracks flying birds throughout each recording. These detections are standardized by video time to generate a Bird Activity Index for each recording and location."},
+            { n: "04", title: "Explore activity patterns", desc: "Review summary plots to see how bird activity changes over time and across locations. As repeated recordings accumulate, you can identify baseline activity, recurring patterns, and periods of increased or decreased activity. The underlying detection data can also be downloaded for further analysis. " },
+          ].map(({ n, title, desc }) => (
+            <div key={n} className="step">
+              <div className="step-num">{n}</div>
+              <div className="step-title">{title}</div>
+              <div className="step-desc">{desc}</div>
+            </div>
+          ))}
           </div>
         </div>
       </div>
@@ -142,11 +121,11 @@ export default function Home() {
               Research behind the tool
             </div>
             <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0, maxWidth: 580, lineHeight: 1.6 }}>
-              This tool was developed as part of ongoing research on automated bird activity monitoring for agricultural applications. The detection pipeline and activity metrics are described in detail in the associated preprint.
+              This tool was developed as part of the research on automated bird activity monitoring for agricultural applications. The detection pipeline and activity metrics are described in detail in the associated preprint.
             </p>
           </div>
           <a
-            href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7261331"
+            href="/paper.pdf"
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -163,10 +142,7 @@ export default function Home() {
           >
             Read the preprint →
           </a>
-          <button
-            className="btn btn-outline"
-            onClick={() => { logout(); navigate("/login"); }}
-          >
+          <button className="nav-logout" onClick={() => { logout(); navigate("/login"); }}>
             Sign out
           </button>
 

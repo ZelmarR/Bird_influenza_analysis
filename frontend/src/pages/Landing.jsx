@@ -8,15 +8,16 @@ import westImg from "../assets/west.jpeg";
 import northImg from "../assets/north.jpeg";
 import farm1 from "../assets/farm1.jpg";
 import farm2 from "../assets/farm2.webp";
+import driveLabLogo from "../assets/LOGO+3.webp";
 
 const GALLERY_ITEMS = [
   {
     src: westImg,
-    caption: "West side of the Dairy Cattle Teaching and Research Facility, MSU",
+    caption: "",
   },
   {
     src: northImg,
-    caption: "North side",
+    caption: "",
   },
   {
     src: farm1,
@@ -66,7 +67,7 @@ export default function Landing() {
           <div className="hero-eyebrow">Wild bird activity — automated monitoring</div>
           <h1 className="hero-h1">
             Know how bird activity<br />
-            changes over <em>time</em>
+            <em>changes over time</em>
           </h1>
           <p className="hero-p">
             The Wild Bird Activity Monitor was created to provide a consistent
@@ -131,10 +132,7 @@ export default function Landing() {
 
       {/* ── Method ── */}
       <section className="landing-section">
-        <div className="section-eyebrow">How it works</div>
-        <h2 className="section-title">
-          Quantify first.<br />Divert smarter.
-        </h2>
+        <div className="section-title">How it works</div>
         <p className="section-body">
           To use the Wild Bird Activity Monitor, collect repeated skyline recordings from the same location. 
           Upload the recordings to the app, which will automatically process the videos and generate summary plots 
@@ -170,21 +168,29 @@ export default function Landing() {
         padding: "64px 40px",
         textAlign: "center",
       }}>
-        <div style={{
-          fontFamily: "'DM Serif Display', Georgia, serif",
-          fontSize: 30,
-          color: "#fff",
-          marginBottom: 14,
-          letterSpacing: -0.5,
-        }}>
-          Ready to protect your farm?
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 40, flexWrap: "wrap" }}>
+          <a href="https://www.drivelabresearch.com/" target="_blank" rel="noopener noreferrer">
+            <img src={driveLabLogo} alt="DRIVE Lab" style={{ height: 80, width: "auto", objectFit: "contain" }} />
+          </a>
+          <div>
+            <div style={{
+              fontFamily: "'DM Serif Display', Georgia, serif",
+              fontSize: 30,
+              color: "#fff",
+              marginBottom: 14,
+              letterSpacing: -0.5,
+            }}>
+              Let's get started!
+            </div>
+            <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 28 }}>
+              Create an account, add your camera locations, and start turning field footage into actionable data.
+            </p>
+            <Link to="/login" className="cta-primary">
+              Create an account →
+            </Link>
+          </div>
+          
         </div>
-        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 28 }}>
-          Create an account, add your camera locations, and start turning field footage into actionable data.
-        </p>
-        <Link to="/login" className="cta-primary">
-          Create an account →
-        </Link>
       </section>
 
       {/* ── Footer ── */}
