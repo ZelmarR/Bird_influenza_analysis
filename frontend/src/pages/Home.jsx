@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { logout } from "../api";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -142,10 +141,6 @@ export default function Home() {
           >
             Read the preprint →
           </a>
-          <button className="nav-logout" onClick={() => { logout(); navigate("/login"); }}>
-            Sign out
-          </button>
-
         </div>
       </div>
     </div>

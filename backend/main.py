@@ -75,6 +75,20 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
 
 app.include_router(auth_router, prefix="/auth")
 
+
+@app.options("/{path:path}")
+async def preflight_handler(request: Request, path: str):
+    origin = request.headers.get("origin", "")
+    headers = {
+        "Access-Control-Allow-Origin": origin if origin in ALLOWED_ORIGINS else "",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+        "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", "*"),
+        "Access-Control-Max-Age": "600",
+    }
+    return JSONResponse(None, status_code=200, headers=headers)
+
+
 # In-memory job store: job_id -> state dict
 _jobs: dict[str, dict] = {}
 

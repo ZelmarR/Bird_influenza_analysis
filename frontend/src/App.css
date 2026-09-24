@@ -646,6 +646,101 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
   pointer-events: none;
 }
 
+/* ── Navbar desktop/mobile split ───────────────────────────── */
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.navbar-hamburger {
+  display: none;
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+}
+
+.hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 22px;
+}
+
+.hamburger-icon span {
+  display: block;
+  height: 2px;
+  background: rgba(255,255,255,0.75);
+  border-radius: 2px;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.hamburger-icon.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger-icon.open span:nth-child(2) { opacity: 0; }
+.hamburger-icon.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Mobile drawer */
+.mobile-nav-drawer {
+  display: none;
+  position: fixed;
+  inset: 54px 0 0 0;
+  z-index: 199;
+  background: rgba(0,0,0,0.4);
+}
+
+.mobile-nav-inner {
+  background: var(--forest-deep);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.mobile-nav-link {
+  display: block;
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.65);
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.01em;
+  transition: color 0.15s, background 0.15s;
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link.active {
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+}
+
+.mobile-nav-link.active {
+  border-left: 3px solid var(--sage-mid);
+  padding-left: 21px;
+}
+
+.mobile-nav-signout {
+  margin-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.35);
+  font-size: 13px;
+  padding-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .navbar-links { display: none; }
+  .navbar-hamburger { display: flex; }
+  .mobile-nav-drawer { display: block; }
+}
+
 /* ── Animations ─────────────────────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }
