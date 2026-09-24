@@ -100,7 +100,7 @@ export default function Home() {
           {[
             { n: "01", title: "Set up cameras at key locations", desc: "Place a camera with a clear view of the skyline at each location you want to monitor. Keep the camera position consistent across recordings so activity can be compared over time. Up to five locations can be monitored separately." },
             { n: "02", title: "Record and upload footage", desc: "Collect repeated video recordings from each location and upload them to the app. Enter the recording date and start time, create the location or choose from the locations you have added." },
-            { n: "03", title: "Automated detection runs", desc: "The system automatically detects and tracks flying birds throughout each recording. These detections are standardized by video time to generate a Bird Activity Index for each recording and location."},
+            { n: "03", title: "Let the model run", desc: "The system automatically detects and tracks flying birds throughout each recording. These detections are standardized by video time to generate a Bird Activity Index for each recording and location."},
             { n: "04", title: "Explore activity patterns", desc: "Review summary plots to see how bird activity changes over time and across locations. As repeated recordings accumulate, you can identify baseline activity, recurring patterns, and periods of increased or decreased activity. The underlying detection data can also be downloaded for further analysis. " },
           ].map(({ n, title, desc }) => (
             <div key={n} className="step">
