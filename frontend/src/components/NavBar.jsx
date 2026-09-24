@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { logout } from "../api";
-import driveLogo from "../assets/vite.svg";
+import driveLogo from "../assets/LOGO+3.webp";
 
 const LINKS = [
   { to: "/app/home",     label: "Overview" },
@@ -53,17 +53,19 @@ export default function NavBar() {
           >
             Questions
           </a>
-          <a
-            href="https://www.drivelabresearch.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}
-          >
-            <img src={driveLogo} alt="DRIVE Lab" style={{ height: 32, width: "auto" }} />
-          </a>
-          <button className="nav-logout" onClick={handleLogout}>
-            Sign out
-          </button>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+            <a
+              href="https://www.drivelabresearch.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "flex", alignItems: "center" }}
+            >
+              <img src={driveLogo} alt="DRIVE Lab" style={{ height: 32, width: "auto" }} />
+            </a>
+            <button className="nav-logout" onClick={handleLogout}>
+              Sign out
+            </button>
+          </div>
         </div>
 
         {/* Hamburger — mobile only */}

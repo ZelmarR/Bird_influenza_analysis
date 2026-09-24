@@ -652,6 +652,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
   align-items: center;
   gap: 4px;
   flex: 1;
+  min-width: 0;
 }
 
 .navbar-hamburger {
@@ -660,7 +661,9 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 6px;
+  padding: 8px;
+  align-items: center;
+  justify-content: center;
 }
 
 .hamburger-icon {
@@ -682,9 +685,8 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
 .hamburger-icon.open span:nth-child(2) { opacity: 0; }
 .hamburger-icon.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
-/* Mobile drawer */
+/* Mobile drawer — visibility controlled by React, not CSS */
 .mobile-nav-drawer {
-  display: none;
   position: fixed;
   inset: 54px 0 0 0;
   z-index: 199;
@@ -738,7 +740,6 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
 @media (max-width: 640px) {
   .navbar-links { display: none; }
   .navbar-hamburger { display: flex; }
-  .mobile-nav-drawer { display: block; }
 }
 
 /* ── Animations ─────────────────────────────────────────────── */
