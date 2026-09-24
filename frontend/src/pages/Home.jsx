@@ -120,7 +120,7 @@ export default function Home() {
               Research behind the tool
             </div>
             <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0, maxWidth: 580, lineHeight: 1.6 }}>
-              This tool was developed as part of the research on automated bird activity monitoring for agricultural applications. The detection pipeline and activity metrics are described in detail in the associated preprint.
+              This tool was developed as part of the research on automated bird activity monitoring for agricultural applications. The detection pipeline and activity metrics are described in detail in the associated paper.
             </p>
           </div>
           <a
@@ -139,7 +139,7 @@ export default function Home() {
               whiteSpace: "nowrap",
             }}
           >
-            Read the preprint →
+            Learn more →
           </a>
         </div>
       </div>
