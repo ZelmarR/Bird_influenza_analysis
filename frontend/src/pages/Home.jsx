@@ -15,17 +15,15 @@ export default function Home() {
                Bird Activity Monitor <em> Dashboard</em>
             </h1>
             <p className="home-hero-sub" style={{ maxWidth: "100%" }}>
-              Birds feeding on farm crops cause real, measurable losses. Flocks arrive in concentrated
-              bursts — often at the same field locations and the same times of day — consuming or
-              contaminating food stores before farmers can intervene. Deploying deterrents effectively
-              requires knowing <em>where</em> birds are arriving, <em>how many</em>, and <em>when</em> the
-              pressure is highest.
+              Wild bird activity can vary widely across locations and throughout the day, but repeated 
+              observations at the same location and time can reveal consistent patterns. 
+              These patterns are important for characterizing bird activity and evaluating 
+              how it changes across locations and over time.
             </p>
             <p className="home-hero-sub" style={{ maxWidth: "100%", marginTop: 10, opacity: 0.75 }}>
-              Place a camera at each vulnerable spot on your farm, record short clips regularly,
-              and upload them here. The system counts birds automatically, measures peak activity
-              times, and builds a growing record per location — giving you the evidence to position
-              diversions where and when they will have the greatest effect.
+              Place a camera at each location of interest, record short clips at consistent times, and upload them here. 
+              The system automatically detects flying birds, quantifies standardized activity within each recording, 
+              and builds a location-specific record that can be used to compare bird activity across sites and over time
             </p>
             <ul className="home-hero-bullets">
               <li>
