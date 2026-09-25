@@ -51,7 +51,7 @@ export default function Login() {
             Automated avian<br />detection research.
           </div>
           <div className="login-visual-sub">
-            Upload field recordings and instantly quantify bird movements, motion metrics,
+            Upload field recordings and analyse bird movements, motion metrics,
             and longitudinal trend analysis.
           </div>
           <div style={{ display: "flex", gap: 20, marginTop: 28, flexWrap: "wrap" }}>

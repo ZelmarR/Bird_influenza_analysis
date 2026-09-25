@@ -49,7 +49,7 @@ export default function Landing() {
         <span className="landing-brand">Wild Bird Activity<em> Monitor</em></span>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <a href="https://www.drivelabresearch.com/" target="_blank" rel="noopener noreferrer">
-            <img src={driveLogo} alt="DRIVE Lab" style={{ height: 30, width: "auto", display: "block" }} />
+            <img src={driveLabLogo} alt="DRIVE Lab" style={{ height: 30, width: "auto", display: "block" }} />
           </a>
           <Link to="/login" style={{ fontSize: 13, color: "var(--text-secondary)", textDecoration: "none", fontWeight: 500 }}>
             Sign in
@@ -195,7 +195,7 @@ export default function Landing() {
 
       {/* ── Footer ── */}
       <footer className="landing-footer">
-        Wild Bird Activity Monitor · DRIVE Lab · drivelabresearch.com · Michigan State University · College of Veterinary Medicine
+        Wild Bird Activity Monitor · DRIVE Lab · <a href="https://www.drivelabresearch.com/" target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>drivelabresearch.com</a> · Michigan State University · College of Veterinary Medicine
       </footer>
     </div>
   );

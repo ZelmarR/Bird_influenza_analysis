@@ -12,7 +12,7 @@ export default function Home() {
           <div className="home-hero-text">
             <div className="home-hero-eyebrow">MSU CVM · Drive Lab Research</div>
             <h1 className="home-hero-title">
-              Field Research <em>Station</em>
+               Bird Activity Monitor <em> Dashboard</em>
             </h1>
             <p className="home-hero-sub" style={{ maxWidth: "100%" }}>
               Birds feeding on farm crops cause real, measurable losses. Flocks arrive in concentrated
