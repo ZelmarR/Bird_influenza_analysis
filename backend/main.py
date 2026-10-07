@@ -50,6 +50,9 @@ app = FastAPI(title="Bird Counter API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# CORSMiddleware must be added last so it runs first (ASGI middleware stack is LIFO).
+# If added before other middleware, a 400/500 from an inner layer won't carry CORS headers
+# and the browser will report a CORS error instead of the real error.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -57,6 +60,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def _log_requests(request: Request, call_next):
+    log.debug("REQUEST %s %s origin=%s", request.method, request.url.path, request.headers.get("origin", "-"))
+    response = await call_next(request)
+    log.debug("RESPONSE %s %s → %d", request.method, request.url.path, response.status_code)
+    return response
 
 
 @app.exception_handler(Exception)
@@ -74,19 +85,6 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 app.include_router(auth_router, prefix="/auth")
-
-
-@app.options("/{path:path}")
-async def preflight_handler(request: Request, path: str):
-    origin = request.headers.get("origin", "")
-    headers = {
-        "Access-Control-Allow-Origin": origin if origin in ALLOWED_ORIGINS else "",
-        "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-        "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", "*"),
-        "Access-Control-Max-Age": "600",
-    }
-    return JSONResponse(None, status_code=200, headers=headers)
 
 
 # In-memory job store: job_id -> state dict
